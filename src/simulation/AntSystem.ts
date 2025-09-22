@@ -1,45 +1,42 @@
-import { ParticleContainer, Texture } from "pixi.js";
+import { Container, Texture } from "pixi.js";
 
 import { Ant } from "./Ant";
+import { Grid } from "./Grid";
+import type { FoodConsumedCallback, Vector2D } from "./types";
 
 export class AntSystem {
-  container: ParticleContainer;
+  container: Container;
   ants: Ant[];
   private antTexture: Texture;
+  private antRedTexture: Texture; // Додаємо червону текстуру
   private gridWidth: number;
   private gridHeight: number;
-  private nestPosition: { x: number; y: number } | null = null;
+  private nestPosition: Vector2D | null = null;
 
-  constructor(antTexture: Texture, gridWidth: number, gridHeight: number) {
+  constructor(antTexture: Texture, antRedTexture: Texture, gridWidth: number, gridHeight: number) {
     this.antTexture = antTexture;
+    this.antRedTexture = antRedTexture;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.ants = [];
 
-    this.container = new ParticleContainer({
-      dynamicProperties: {
-        position: true,
-        rotation: true,
-        scale: false,
-        color: false,
-      },
-    });
+    this.container = new Container();
   }
 
   addAnt(): Ant {
     const spawnX = this.nestPosition ? this.nestPosition.x : this.gridWidth / 2;
     const spawnY = this.nestPosition ? this.nestPosition.y : this.gridHeight / 2;
 
-    const ant = new Ant(spawnX, spawnY, this.antTexture);
+    const ant = new Ant(spawnX, spawnY, this.antTexture, this.antRedTexture);
     this.ants.push(ant);
-    this.container.addParticle(ant.particle);
+    this.container.addChild(ant.sprite); // Використовуємо sprite
     return ant;
   }
 
   removeAnt(ant: Ant) {
     const index = this.ants.indexOf(ant);
     if (index !== -1) {
-      this.container.removeParticle(ant.particle);
+      this.container.removeChild(ant.sprite); // Використовуємо sprite
       this.ants.splice(index, 1);
     }
   }
@@ -61,9 +58,9 @@ export class AntSystem {
     }
   }
 
-  update(deltaTime: number, gridWidth: number, gridHeight: number) {
+  update(deltaTime: number, gridWidth: number, gridHeight: number, grid?: Grid, onFoodConsumed?: FoodConsumedCallback) {
     for (const ant of this.ants) {
-      ant.step(gridWidth, gridHeight, deltaTime);
+      ant.step(gridWidth, gridHeight, deltaTime, grid, onFoodConsumed);
     }
   }
 
@@ -80,7 +77,7 @@ export class AntSystem {
     this.nestPosition = { x, y };
   }
 
-  getNestPosition(): { x: number; y: number } | null {
+  getNestPosition(): Vector2D | null {
     return this.nestPosition;
   }
 }

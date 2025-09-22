@@ -1,62 +1,95 @@
-import { Container, Graphics } from "pixi.js";
+import { Container, Particle, ParticleContainer, Texture } from "pixi.js";
 
+import { ALPHA, COLORS, MAX_FOOD_PER_CELL } from "./constants";
 import { Grid } from "./Grid";
-
-export type CellType = "nest" | "food" | "obstacle" | "empty";
+import type { Cell, CellParticle, CellType } from "./types";
 
 export class GridSystem {
   container: Container;
   grid: Grid;
-  graphics: Graphics;
-  private needsRedraw: boolean = false;
+  particleContainer: ParticleContainer;
+  particles: Map<string, CellParticle> = new Map();
 
   constructor(grid: Grid) {
     this.grid = grid;
     this.container = new Container();
-    this.graphics = new Graphics();
-    this.container.addChild(this.graphics);
 
-    this.draw();
+    this.particleContainer = new ParticleContainer({
+      dynamicProperties: {
+        position: false,
+        alpha: true,
+        scale: false,
+        tint: true,
+      },
+    });
+
+    this.container.addChild(this.particleContainer);
   }
-  draw() {
-    this.graphics.clear();
 
-    for (let r = 0; r < this.grid.rows; r++) {
-      for (let c = 0; c < this.grid.cols; c++) {
-        const cell = this.grid.cells[r][c];
-        const x = c * this.grid.cellSize;
-        const y = r * this.grid.cellSize;
+  ensureParticle(row: number, col: number): CellParticle {
+    const key = `${row}-${col}`;
+    let cellParticle = this.particles.get(key);
 
-        let cellType: CellType = "empty";
+    if (!cellParticle) {
+      const x = col * this.grid.cellSize;
+      const y = row * this.grid.cellSize;
 
-        if (cell.isNest) {
-          cellType = "nest";
-        } else if (cell.obstacle) {
-          cellType = "obstacle";
-        } else if (cell.food > 0) {
-          cellType = "food";
-        }
-        this.drawCell(x, y, cellType);
-      }
+      const particle = new Particle(Texture.WHITE);
+      particle.x = x;
+      particle.y = y;
+      particle.scaleX = this.grid.cellSize;
+      particle.scaleY = this.grid.cellSize;
+      particle.anchorX = 0;
+      particle.anchorY = 0;
+
+      this.particleContainer.addParticle(particle);
+
+      cellParticle = {
+        particle,
+        row,
+        col,
+        type: "empty",
+      };
+
+      this.particles.set(key, cellParticle);
+    }
+
+    return cellParticle;
+  }
+
+  removeParticleIfEmpty(row: number, col: number) {
+    const key = `${row}-${col}`;
+    const cellParticle = this.particles.get(key);
+    const cell = this.grid.cells[row][col];
+
+    if (cellParticle && !cell.isNest && !cell.obstacle && cell.food <= 0) {
+      this.particleContainer.removeParticle(cellParticle.particle);
+      this.particles.delete(key);
     }
   }
 
-  private drawCell(x: number, y: number, type: CellType) {
-    const cellSize = this.grid.cellSize;
+  updateParticle(cellParticle: CellParticle, cell: Cell) {
+    let type: CellType = "empty";
+    let color: number = COLORS.EMPTY;
+    let alpha: number = ALPHA.EMPTY_CELL;
 
-    const colors = {
-      nest: 0x8b4513,
-      food: 0x32cd32,
-      obstacle: 0x696969,
-      empty: 0xffffff,
-    };
+    if (cell.isNest) {
+      type = "nest";
+      color = COLORS.NEST;
+      alpha = ALPHA.FILLED_CELL;
+    } else if (cell.obstacle) {
+      type = "obstacle";
+      color = COLORS.OBSTACLE;
+      alpha = ALPHA.FILLED_CELL;
+    } else if (cell.food > 0) {
+      type = "food";
+      color = COLORS.FOOD;
+      alpha = Math.min(ALPHA.FILLED_CELL, cell.food / MAX_FOOD_PER_CELL);
+    }
 
-    const color = colors[type];
-    const alpha = type === "empty" ? 0.1 : 1;
-
-    this.graphics.rect(x, y, cellSize, cellSize);
-    this.graphics.fill({ color, alpha });
-    this.graphics.stroke({ color: 0xcccccc, width: 0.5 });
+    cellParticle.type = type;
+    cellParticle.particle.tint = color;
+    cellParticle.particle.alpha = alpha;
   }
 
   setCellTypeAtPosition(x: number, y: number, type: CellType) {
@@ -68,7 +101,7 @@ export class GridSystem {
 
       switch (type) {
         case "food":
-          cell.food = 100;
+          cell.food = MAX_FOOD_PER_CELL;
           cell.obstacle = false;
           cell.isNest = false;
           break;
@@ -89,7 +122,13 @@ export class GridSystem {
           break;
       }
 
-      this.needsRedraw = true;
+      // Створюємо або оновлюємо частинку тільки якщо потрібно
+      if (type !== "empty") {
+        const cellParticle = this.ensureParticle(row, col);
+        this.updateParticle(cellParticle, cell);
+      } else {
+        this.removeParticleIfEmpty(row, col);
+      }
     }
   }
 
@@ -111,7 +150,7 @@ export class GridSystem {
 
           switch (type) {
             case "food":
-              cell.food = 100;
+              cell.food = MAX_FOOD_PER_CELL;
               cell.obstacle = false;
               cell.isNest = false;
               break;
@@ -131,22 +170,52 @@ export class GridSystem {
               cell.isNest = false;
               break;
           }
+
+          // Створюємо або оновлюємо частинку тільки якщо потрібно
+          if (type !== "empty") {
+            const cellParticle = this.ensureParticle(row, col);
+            this.updateParticle(cellParticle, cell);
+          } else {
+            this.removeParticleIfEmpty(row, col);
+          }
         }
       }
     }
-
-    this.needsRedraw = true;
   }
 
   update() {
-    if (this.needsRedraw) {
-      this.draw();
-      this.needsRedraw = false;
+    // Цей метод можна залишити порожнім або видалити,
+    // оскільки оновлення відбувається при взаємодії
+  }
+
+  // Оновлює конкретну клітинку (викликається коли мурашка споживає їжу)
+  updateCell(row: number, col: number) {
+    if (row >= 0 && row < this.grid.rows && col >= 0 && col < this.grid.cols) {
+      const cell = this.grid.cells[row][col];
+      const key = `${row}-${col}`;
+      const cellParticle = this.particles.get(key);
+
+      if (cellParticle) {
+        this.updateParticle(cellParticle, cell);
+        // Видаляємо частинку якщо клітинка стала порожньою
+        if (!cell.isNest && !cell.obstacle && cell.food <= 0) {
+          this.removeParticleIfEmpty(row, col);
+        }
+      }
+    }
+  }
+
+  // Оновлює всі існуючі частинки (рідко використовується)
+  updateAllParticles() {
+    for (const [, cellParticle] of this.particles) {
+      const cell = this.grid.cells[cellParticle.row][cellParticle.col];
+      this.updateParticle(cellParticle, cell);
     }
   }
 
   destroy() {
-    this.graphics.destroy();
+    this.particles.clear();
+    this.particleContainer.destroy();
     this.container.destroy();
   }
 }

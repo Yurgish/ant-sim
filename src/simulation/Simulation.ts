@@ -1,6 +1,7 @@
 import { Application, Assets, Graphics, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
+import antRedSprite from "/ant-red.png"; // Додаємо червону мурашку
 
 import { AntSystem } from "./AntSystem";
 import { Grid } from "./Grid";
@@ -72,14 +73,16 @@ export class Simulation {
     const grid = new Grid(width, height, cellSize);
     const gridSystem = new GridSystem(grid);
 
-    const pheromones = new PheromoneSystem(cellSize);
+    const pheromones = new PheromoneSystem(cellSize, grid);
 
     app.stage.addChild(pheromones.container);
     app.stage.addChild(gridSystem.container);
 
-    const texture: Texture = await Assets.load(antSprite);
+    // Завантажуємо обидві текстури мурашок
+    const antTexture: Texture = await Assets.load(antSprite);
+    const antRedTexture: Texture = await Assets.load(antRedSprite);
 
-    const antSystem = new AntSystem(texture, width, height);
+    const antSystem = new AntSystem(antTexture, antRedTexture, width, height);
     app.stage.addChild(antSystem.container);
 
     const gridGraphics = new Graphics();
@@ -102,19 +105,63 @@ export class Simulation {
 
     const deltaTime = ticker.deltaTime / 60;
 
-    this.antSystem.update(deltaTime, this.app.canvas.width, this.app.canvas.height);
+    // Колбек для сигналізації про споживання їжі
+    const onFoodConsumed = (row: number, col: number) => {
+      this.gridSystem.updateCell(row, col);
+    };
+
+    this.antSystem.update(deltaTime, this.app.canvas.width, this.app.canvas.height, this.grid, onFoodConsumed);
 
     const antsReadyToDropPheromone = this.antSystem.getAntsReadyToDropPheromone();
 
     for (const ant of antsReadyToDropPheromone) {
       if (ant.carryingFood) {
-        this.pheromones.add(ant.particle.x, ant.particle.y, "food");
+        // Мурашка несе їжу - залишає феромони їжі з інформацією про найближчу їжу
+        const foodPositions = this.grid.findFoodPositions();
+        if (foodPositions.length > 0) {
+          // Знаходимо найближчу їжу
+          const antPos = { x: ant.sprite.x, y: ant.sprite.y };
+          let closestFood = foodPositions[0];
+          let minDistance = Math.hypot(antPos.x - closestFood.x, antPos.y - closestFood.y);
+
+          for (const foodPos of foodPositions) {
+            const distance = Math.hypot(antPos.x - foodPos.x, antPos.y - foodPos.y);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestFood = foodPos;
+            }
+          }
+
+          this.pheromones.addFoodPheromone(ant.sprite.x, ant.sprite.y, closestFood);
+        } else {
+          this.pheromones.add(ant.sprite.x, ant.sprite.y, "food");
+        }
       } else {
-        this.pheromones.add(ant.particle.x, ant.particle.y, "home");
+        // Мурашка шукає їжу - залишає домашні феромони
+        this.pheromones.add(ant.sprite.x, ant.sprite.y, "home");
+        // Для домашніх феромонів передаємо позицію гнізда
+        if (this.nestPosition) {
+          this.grid.addPheromone(ant.sprite.x, ant.sprite.y, "home", 1, this.nestPosition);
+        }
       }
     }
 
     this.pheromones.update(deltaTime);
+
+    // Оновлюємо grid (evaporation феромонів)
+    this.grid.updateAll();
+
+    // Оновлюємо напрямки до гнізда і їжі періодично
+    if (this.nestPosition && Math.random() < 0.1) {
+      // 10% шанс на кадр
+      this.grid.calculateHomeDirections(this.nestPosition);
+    }
+
+    // Оновлюємо напрямки до їжі
+    if (Math.random() < 0.05) {
+      // 5% шанс на кадр (рідше, оскільки їжа змінюється частіше)
+      this.grid.calculateFoodDirections();
+    }
 
     this.gridSystem.update();
   }
@@ -214,15 +261,20 @@ export class Simulation {
   setInitialNest(x: number, y: number) {
     this.nestPosition = { x, y };
     this.antSystem.setNestPosition(x, y);
-    this.gridSystem.setCellTypeAtPosition(x, y, "nest");
+
+    const nestSize = (5 * this.grid.cellSize) / 2;
+    this.gridSystem.setCellTypeInRadius(x, y, nestSize, "nest");
   }
 
   moveNest(x: number, y: number) {
     if (this.nestPosition) {
-      this.gridSystem.setCellTypeAtPosition(this.nestPosition.x, this.nestPosition.y, "empty");
+      const nestSize = (5 * this.grid.cellSize) / 2;
+      this.gridSystem.setCellTypeInRadius(this.nestPosition.x, this.nestPosition.y, nestSize, "empty");
     }
 
     this.setInitialNest(x, y);
+
+    this.grid.calculateHomeDirections({ x, y });
   }
 
   private updatePauseState() {

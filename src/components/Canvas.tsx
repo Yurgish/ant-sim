@@ -26,7 +26,7 @@ export function Canvas() {
         containerRef.current,
         window.innerWidth,
         window.innerHeight,
-        6,
+        4,
         100
       );
       setIsSimulationReady(true);
