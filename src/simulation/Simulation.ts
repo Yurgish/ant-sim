@@ -1,36 +1,44 @@
-import { Application, Assets, Graphics, ParticleContainer, Texture } from "pixi.js";
+import { Application, Assets, Graphics, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
 
-import { Ant } from "./Ant";
+import { AntSystem } from "./AntSystem";
 import { Grid } from "./Grid";
+import { GridSystem } from "./GridSystem";
 import { PheromoneSystem } from "./PheromoneSystem";
 
 export class Simulation {
   app: Application;
   grid: Grid;
-  ants: Ant[];
+  gridSystem: GridSystem;
   gridGraphics: Graphics;
-  antContainer: ParticleContainer;
+  antSystem: AntSystem;
   pheromones: PheromoneSystem;
   private updateFunction: (ticker: { deltaTime: number }) => void;
-  private antTexture: Texture;
+
+  public currentBrushType: "nest" | "food" | "obstacle" | "empty" = "food";
+  public brushSize: number = 20;
+  private isDrawing: boolean = false;
+  private isPaused: boolean = false;
+  private userPaused: boolean = false; // Пауза встановлена користувачем
+  private drawingPaused: boolean = false; // Пауза при малюванні
+
+  private nestPosition: { x: number; y: number } | null = null;
 
   private constructor(
     app: Application,
     grid: Grid,
+    gridSystem: GridSystem,
     gridGraphics: Graphics,
-    antContainer: ParticleContainer,
-    pheromones: PheromoneSystem,
-    antTexture: Texture
+    antSystem: AntSystem,
+    pheromones: PheromoneSystem
   ) {
     this.app = app;
     this.grid = grid;
-    this.ants = [];
+    this.gridSystem = gridSystem;
     this.gridGraphics = gridGraphics;
-    this.antContainer = antContainer;
+    this.antSystem = antSystem;
     this.pheromones = pheromones;
-    this.antTexture = antTexture;
     this.updateFunction = this.update.bind(this);
   }
 
@@ -38,7 +46,7 @@ export class Simulation {
     this.app.ticker.remove(this.updateFunction);
 
     this.gridGraphics.destroy();
-    this.antContainer.destroy();
+    this.antSystem.destroy();
 
     this.app.destroy(true, { children: true });
   }
@@ -62,27 +70,27 @@ export class Simulation {
     await app.init({ canvas: canvas, width, height, backgroundColor: 0xffffff });
 
     const grid = new Grid(width, height, cellSize);
-
-    const antContainer = new ParticleContainer({
-      dynamicProperties: {
-        position: true,
-        rotation: true,
-        scale: false,
-        color: false,
-      },
-    });
+    const gridSystem = new GridSystem(grid);
 
     const pheromones = new PheromoneSystem(cellSize);
+
     app.stage.addChild(pheromones.container);
-    app.stage.addChild(antContainer);
+    app.stage.addChild(gridSystem.container);
 
     const texture: Texture = await Assets.load(antSprite);
 
+    const antSystem = new AntSystem(texture, width, height);
+    app.stage.addChild(antSystem.container);
+
     const gridGraphics = new Graphics();
 
-    const simulation = new Simulation(app, grid, gridGraphics, antContainer, pheromones, texture);
+    const simulation = new Simulation(app, grid, gridSystem, gridGraphics, antSystem, pheromones);
+
+    simulation.setInitialNest(width / 2, height / 2);
 
     simulation.setAntCount(initialAntCount);
+
+    simulation.setupMouseEvents();
 
     app.ticker.add(simulation.updateFunction);
 
@@ -90,41 +98,29 @@ export class Simulation {
   }
 
   update(ticker: { deltaTime: number }) {
+    if (this.isPaused) return;
+
     const deltaTime = ticker.deltaTime / 60;
 
-    for (const ant of this.ants) {
-      ant.step(this.grid.width, this.grid.height, deltaTime);
+    this.antSystem.update(deltaTime, this.app.canvas.width, this.app.canvas.height);
 
-      if (ant.shouldDropPheromone()) {
-        if (ant.carryingFood) {
-          this.pheromones.add(ant.particle.x, ant.particle.y, "food");
-        } else {
-          this.pheromones.add(ant.particle.x, ant.particle.y, "home");
-        }
+    const antsReadyToDropPheromone = this.antSystem.getAntsReadyToDropPheromone();
+
+    for (const ant of antsReadyToDropPheromone) {
+      if (ant.carryingFood) {
+        this.pheromones.add(ant.particle.x, ant.particle.y, "food");
+      } else {
+        this.pheromones.add(ant.particle.x, ant.particle.y, "home");
       }
     }
 
     this.pheromones.update(deltaTime);
+
+    this.gridSystem.update();
   }
 
   setAntCount(newCount: number) {
-    const currentCount = this.ants.length;
-
-    if (newCount === currentCount) return;
-
-    if (newCount > currentCount) {
-      for (let i = currentCount; i < newCount; i++) {
-        const ant = new Ant(this.grid.width / 2, this.grid.height / 2, this.antTexture);
-        this.ants.push(ant);
-        this.antContainer.addParticle(ant.particle);
-      }
-    } else {
-      for (let i = currentCount - 1; i >= newCount; i--) {
-        const ant = this.ants[i];
-        this.antContainer.removeParticle(ant.particle);
-        this.ants.splice(i, 1);
-      }
-    }
+    this.antSystem.setCount(newCount);
   }
 
   setPheromonesVisible(visible: boolean) {
@@ -141,13 +137,114 @@ export class Simulation {
 
   setAntsVisible(visible: boolean) {
     if (visible) {
-      if (!this.app.stage.children.includes(this.antContainer)) {
-        this.app.stage.addChild(this.antContainer);
+      if (!this.app.stage.children.includes(this.antSystem.container)) {
+        this.app.stage.addChild(this.antSystem.container);
       }
     } else {
-      if (this.app.stage.children.includes(this.antContainer)) {
-        this.app.stage.removeChild(this.antContainer);
+      if (this.app.stage.children.includes(this.antSystem.container)) {
+        this.app.stage.removeChild(this.antSystem.container);
       }
     }
+  }
+
+  setupMouseEvents() {
+    this.app.canvas.style.cursor = "crosshair";
+
+    this.app.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
+    this.app.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
+    this.app.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
+    this.app.canvas.addEventListener("mouseleave", this.onMouseUp.bind(this));
+
+    document.addEventListener("mouseup", this.onMouseUp.bind(this));
+    document.addEventListener("mouseleave", this.onMouseUp.bind(this));
+  }
+
+  private onMouseDown(event: MouseEvent) {
+    this.isDrawing = true;
+
+    if (!this.userPaused) {
+      this.drawingPaused = true;
+      this.updatePauseState();
+    }
+
+    this.drawAtPosition(event.offsetX, event.offsetY);
+  }
+
+  private onMouseMove(event: MouseEvent) {
+    if (this.isDrawing) {
+      this.drawAtPosition(event.offsetX, event.offsetY);
+    }
+  }
+
+  private onMouseUp() {
+    this.isDrawing = false;
+
+    this.drawingPaused = false;
+    this.updatePauseState();
+  }
+
+  private drawAtPosition(x: number, y: number) {
+    if (this.currentBrushType === "nest") {
+      this.moveNest(x, y);
+    } else {
+      this.gridSystem.setCellTypeInRadius(x, y, this.brushSize, this.currentBrushType);
+    }
+  }
+
+  setBrushType(type: "nest" | "food" | "obstacle" | "empty") {
+    this.currentBrushType = type;
+  }
+
+  setBrushSize(size: number) {
+    this.brushSize = size;
+  }
+
+  setGridVisible(visible: boolean) {
+    if (visible) {
+      if (!this.app.stage.children.includes(this.gridSystem.container)) {
+        this.app.stage.addChild(this.gridSystem.container);
+      }
+    } else {
+      if (this.app.stage.children.includes(this.gridSystem.container)) {
+        this.app.stage.removeChild(this.gridSystem.container);
+      }
+    }
+  }
+
+  setInitialNest(x: number, y: number) {
+    this.nestPosition = { x, y };
+    this.antSystem.setNestPosition(x, y);
+    this.gridSystem.setCellTypeAtPosition(x, y, "nest");
+  }
+
+  moveNest(x: number, y: number) {
+    if (this.nestPosition) {
+      this.gridSystem.setCellTypeAtPosition(this.nestPosition.x, this.nestPosition.y, "empty");
+    }
+
+    this.setInitialNest(x, y);
+  }
+
+  private updatePauseState() {
+    this.isPaused = this.userPaused || this.drawingPaused;
+  }
+
+  pause() {
+    this.userPaused = true;
+    this.updatePauseState();
+  }
+
+  resume() {
+    this.userPaused = false;
+    this.updatePauseState();
+  }
+
+  togglePause() {
+    this.userPaused = !this.userPaused;
+    this.updatePauseState();
+  }
+
+  isPausedState(): boolean {
+    return this.isPaused;
   }
 }

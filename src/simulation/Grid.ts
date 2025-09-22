@@ -5,6 +5,7 @@ export type Cell = {
     home: number;
   };
   obstacle: boolean;
+  isNest: boolean;
 };
 
 const EVAPORATION_RATE = 0.99;
@@ -30,6 +31,7 @@ export class Grid {
         food: 0,
         pheromones: { food: 0, home: 0 },
         obstacle: false,
+        isNest: false,
       }))
     );
   }

@@ -1,16 +1,58 @@
 import { Simulation } from "@simulation/Simulation";
-import { useControls } from "leva";
-import { useEffect, useRef } from "react";
+import { button, useControls } from "leva";
+import { useEffect, useRef, useState } from "react";
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<Simulation | null>(null);
+  const [isSimulationReady, setIsSimulationReady] = useState(false);
 
-  const { antCount, showAnts, showPheromones } = useControls("Simulation", {
+  const restartSimulation = async () => {
+    if (simulationRef.current) {
+      simulationRef.current.destroy();
+      simulationRef.current = null;
+      setIsSimulationReady(false);
+    }
+
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    try {
+      simulationRef.current = await Simulation.create(
+        containerRef.current,
+        window.innerWidth,
+        window.innerHeight,
+        6,
+        100
+      );
+      setIsSimulationReady(true);
+    } catch (error) {
+      console.error("Failed to restart simulation:", error);
+    }
+  };
+
+  const controls = useControls("Simulation", {
     antCount: { value: 100, min: 1, max: 2000, step: 1 },
     showAnts: { value: true, label: "Show Ants" },
-    showPheromones: { value: true, label: "Show Pheromones" },
+    showPheromones: { value: false, label: "Show Pheromones" },
+    showGrid: { value: true, label: "Show Grid" },
+    brushType: {
+      value: "food",
+      options: ["nest", "food", "obstacle", "empty"],
+      label: "Brush Type",
+    },
+    brushSize: { value: 20, min: 5, max: 100, step: 5, label: "Brush Size" },
+    isPaused: { value: false, label: "Pause Simulation" },
+    restart: button(() => {
+      restartSimulation();
+    }),
   });
+
+  const { antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused } = controls;
 
   useEffect(() => {
     const initSimulation = async () => {
@@ -28,9 +70,10 @@ export function Canvas() {
           containerRef.current,
           window.innerWidth,
           window.innerHeight,
-          10,
+          6,
           100
         );
+        setIsSimulationReady(true);
       } catch (error) {
         console.error("Failed to create simulation:", error);
       }
@@ -42,27 +85,26 @@ export function Canvas() {
       if (simulationRef.current) {
         simulationRef.current.destroy();
         simulationRef.current = null;
+        setIsSimulationReady(false);
       }
     };
   }, []);
 
   useEffect(() => {
-    if (simulationRef.current) {
+    if (isSimulationReady && simulationRef.current) {
       simulationRef.current.setAntCount(antCount);
-    }
-  }, [antCount]);
-
-  useEffect(() => {
-    if (simulationRef.current) {
       simulationRef.current.setAntsVisible(showAnts);
-    }
-  }, [showAnts]);
-
-  useEffect(() => {
-    if (simulationRef.current) {
       simulationRef.current.setPheromonesVisible(showPheromones);
+      simulationRef.current.setGridVisible(showGrid);
+      simulationRef.current.setBrushType(brushType as "nest" | "food" | "obstacle" | "empty");
+      simulationRef.current.setBrushSize(brushSize);
+      if (isPaused) {
+        simulationRef.current.pause();
+      } else {
+        simulationRef.current.resume();
+      }
     }
-  }, [showPheromones]);
+  }, [isSimulationReady, antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused]);
 
   return <div ref={containerRef} style={{ width: "100vw", height: "100vh" }} />;
 }
