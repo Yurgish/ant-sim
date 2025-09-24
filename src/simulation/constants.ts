@@ -1,6 +1,6 @@
 // debug
 export const DEBUG_ENABLED = false;
-export const VISIBLE_SENSORS = 20;
+export const VISIBLE_SENSORS = 5;
 
 // Simulation constants
 // Display colors
@@ -29,7 +29,11 @@ export const BASE_PHEROMONE_STRENGTH = 1;
 export const PHEROMONE_INCREMENT = 0.25;
 // export const MIN_PHEROMONE_TO_REINFORCE = 0.2;
 export const MAX_PHEROMONE_THRESHOLD = 10; // Maximum pheromone level in cell
-export const PHEROMONE_SIZE = 0.7; // Pheromone size relative to cell size
+export const PHEROMONE_SIZE = 1; // Pheromone size relative to cell size
+
+// Pheromone gradient parameters
+export const MAX_PHEROMONE_MULTIPLIER = 8; // Maximum strength multiplier for fresh pheromones
+export const PHEROMONE_FADE_TIME = 16; // Time in seconds for pheromone strength to fade to base
 //export const PHEROMONE_SPREAD_RADIUS_CELLS = 2; // Pheromone spread radius in cells
 
 // Ant parameters

@@ -8,6 +8,8 @@ import {
   BASE_PHEROMONE_STRENGTH,
   COLLISION_PREDICTION_DISTANCE,
   EDGE_COLLISION_MARGIN,
+  MAX_PHEROMONE_MULTIPLIER,
+  PHEROMONE_FADE_TIME,
   PHEROMONE_TIMER_INTERVAL,
   SENSOR_ANGLE,
   SENSOR_DISTANCE_CELLS,
@@ -236,19 +238,22 @@ export class Ant {
     let pheromoneStrength = BASE_PHEROMONE_STRENGTH;
 
     if (this.state === "searching") {
-      // For searching ants: initially strength *4, after 30 seconds = *1 (base)
-      const maxWanderingTime = 30; // 30 seconds
-      const strengthMultiplier = Math.max(1, 7 - (this.wanderingTime / maxWanderingTime) * 2);
+      // For searching ants: initially strength *MAX_PHEROMONE_MULTIPLIER, after PHEROMONE_FADE_TIME seconds = *1 (base)
+      const strengthMultiplier = Math.max(
+        1,
+        MAX_PHEROMONE_MULTIPLIER - (this.wanderingTime / PHEROMONE_FADE_TIME) * (MAX_PHEROMONE_MULTIPLIER - 1)
+      );
       pheromoneStrength *= strengthMultiplier;
     } else if (this.state === "returning") {
       // For returning ants: strong pheromone near food, weaker as time passes
       // Timer resets when food is found, so creates gradient around food sources
-      const maxReturnTime = 20; // 20 seconds to create gradient
-      const strengthMultiplier = Math.max(1, 7 - (this.wanderingTime / maxReturnTime) * 3);
+      const strengthMultiplier = Math.max(
+        1,
+        MAX_PHEROMONE_MULTIPLIER - (this.wanderingTime / PHEROMONE_FADE_TIME) * (MAX_PHEROMONE_MULTIPLIER - 1)
+      );
       pheromoneStrength *= strengthMultiplier;
     }
 
-    // Add new pheromone with calculated strength
     grid.addPheromone(this.sprite.x, this.sprite.y, pheromoneType, pheromoneStrength);
   }
 
