@@ -1,6 +1,6 @@
 import type { Vector2D } from "./types";
 
-// Утиліти для роботи з векторами
+// Vector utilities
 export class VectorUtils {
   static create(x: number, y: number): Vector2D {
     return { x, y };
@@ -44,7 +44,7 @@ export class VectorUtils {
   }
 }
 
-// Утиліти для роботи з кутами
+// Angle utilities
 export class AngleUtils {
   static normalize(angle: number): number {
     while (angle > Math.PI) angle -= 2 * Math.PI;
@@ -61,7 +61,7 @@ export class AngleUtils {
   }
 }
 
-// Утиліти для роботи з сіткою
+// Grid utilities
 export class GridUtils {
   static getKey(row: number, col: number): string {
     return `${row}-${col}`;
@@ -93,7 +93,7 @@ export class GridUtils {
   }
 }
 
-// Утиліти для роботи з феромонами
+// Pheromone utilities
 export class PheromoneUtils {
   static calculateDirection(from: Vector2D, to: Vector2D): Vector2D {
     return VectorUtils.direction(from, to);
@@ -108,7 +108,7 @@ export class PheromoneUtils {
   }
 }
 
-// Загальні математичні утиліти
+// General math utilities
 export class MathUtils {
   static clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);

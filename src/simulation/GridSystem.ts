@@ -10,8 +10,8 @@ export class GridSystem {
   particleContainer: ParticleContainer;
   particles: Map<string, CellParticle> = new Map();
 
-  constructor(grid: Grid) {
-    this.grid = grid;
+  constructor(width: number, height: number, cellSize: number) {
+    this.grid = new Grid(width, height, cellSize);
     this.container = new Container();
 
     this.particleContainer = new ParticleContainer({
@@ -122,7 +122,7 @@ export class GridSystem {
           break;
       }
 
-      // Створюємо або оновлюємо частинку тільки якщо потрібно
+      // Create or update particle only if needed
       if (type !== "empty") {
         const cellParticle = this.ensureParticle(row, col);
         this.updateParticle(cellParticle, cell);
@@ -171,7 +171,7 @@ export class GridSystem {
               break;
           }
 
-          // Створюємо або оновлюємо частинку тільки якщо потрібно
+          // Create or update particle only if needed
           if (type !== "empty") {
             const cellParticle = this.ensureParticle(row, col);
             this.updateParticle(cellParticle, cell);
@@ -184,11 +184,11 @@ export class GridSystem {
   }
 
   update() {
-    // Цей метод можна залишити порожнім або видалити,
-    // оскільки оновлення відбувається при взаємодії
+    // This method can be left empty or removed,
+    // since updates happen during interactions
   }
 
-  // Оновлює конкретну клітинку (викликається коли мурашка споживає їжу)
+  // Updates specific cell (called when ant consumes food)
   updateCell(row: number, col: number) {
     if (row >= 0 && row < this.grid.rows && col >= 0 && col < this.grid.cols) {
       const cell = this.grid.cells[row][col];
@@ -197,7 +197,7 @@ export class GridSystem {
 
       if (cellParticle) {
         this.updateParticle(cellParticle, cell);
-        // Видаляємо частинку якщо клітинка стала порожньою
+        // Remove particle if cell became empty
         if (!cell.isNest && !cell.obstacle && cell.food <= 0) {
           this.removeParticleIfEmpty(row, col);
         }
@@ -205,7 +205,7 @@ export class GridSystem {
     }
   }
 
-  // Оновлює всі існуючі частинки (рідко використовується)
+  // Updates all existing particles (rarely used)
   updateAllParticles() {
     for (const [, cellParticle] of this.particles) {
       const cell = this.grid.cells[cellParticle.row][cellParticle.col];

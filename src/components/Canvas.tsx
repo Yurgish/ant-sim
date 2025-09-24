@@ -1,3 +1,4 @@
+import { BASE_ANT_COUNT, GRID_CELL_SIZE } from "@simulation/constants";
 import { Simulation } from "@simulation/Simulation";
 import { button, useControls } from "leva";
 import { useEffect, useRef, useState } from "react";
@@ -26,8 +27,8 @@ export function Canvas() {
         containerRef.current,
         window.innerWidth,
         window.innerHeight,
-        4,
-        100
+        GRID_CELL_SIZE,
+        BASE_ANT_COUNT
       );
       setIsSimulationReady(true);
     } catch (error) {
@@ -70,8 +71,8 @@ export function Canvas() {
           containerRef.current,
           window.innerWidth,
           window.innerHeight,
-          6,
-          100
+          GRID_CELL_SIZE,
+          BASE_ANT_COUNT
         );
         setIsSimulationReady(true);
       } catch (error) {

@@ -1,6 +1,7 @@
 import { Container, Texture } from "pixi.js";
 
 import { Ant } from "./Ant";
+import { DEBUG_ENABLED, VISIBLE_SENSORS } from "./constants";
 import { Grid } from "./Grid";
 import type { FoodConsumedCallback, Vector2D } from "./types";
 
@@ -8,17 +9,19 @@ export class AntSystem {
   container: Container;
   ants: Ant[];
   private antTexture: Texture;
-  private antRedTexture: Texture; // Додаємо червону текстуру
+  private antRedTexture: Texture; // Add red texture
   private gridWidth: number;
   private gridHeight: number;
   private nestPosition: Vector2D | null = null;
+  private cellSize: number;
 
-  constructor(antTexture: Texture, antRedTexture: Texture, gridWidth: number, gridHeight: number) {
+  constructor(antTexture: Texture, antRedTexture: Texture, gridWidth: number, gridHeight: number, cellSize: number) {
     this.antTexture = antTexture;
     this.antRedTexture = antRedTexture;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.ants = [];
+    this.cellSize = cellSize;
 
     this.container = new Container();
   }
@@ -27,16 +30,25 @@ export class AntSystem {
     const spawnX = this.nestPosition ? this.nestPosition.x : this.gridWidth / 2;
     const spawnY = this.nestPosition ? this.nestPosition.y : this.gridHeight / 2;
 
-    const ant = new Ant(spawnX, spawnY, this.antTexture, this.antRedTexture);
+    const ant = new Ant(spawnX, spawnY, this.antTexture, this.antRedTexture, this.cellSize);
+
+    // Enable debug for first ant if DEBUG_ENABLED
+    if (this.ants.length < VISIBLE_SENSORS && DEBUG_ENABLED) {
+      ant.enableDebug();
+      if (ant.debugGraphics) {
+        this.container.addChild(ant.debugGraphics);
+      }
+    }
+
     this.ants.push(ant);
-    this.container.addChild(ant.sprite); // Використовуємо sprite
+    this.container.addChild(ant.sprite); // Use sprite
     return ant;
   }
 
   removeAnt(ant: Ant) {
     const index = this.ants.indexOf(ant);
     if (index !== -1) {
-      this.container.removeChild(ant.sprite); // Використовуємо sprite
+      this.container.removeChild(ant.sprite); // Use sprite
       this.ants.splice(index, 1);
     }
   }
@@ -62,10 +74,6 @@ export class AntSystem {
     for (const ant of this.ants) {
       ant.step(gridWidth, gridHeight, deltaTime, grid, onFoodConsumed);
     }
-  }
-
-  getAntsReadyToDropPheromone(): Ant[] {
-    return this.ants.filter((ant) => ant.shouldDropPheromone());
   }
 
   destroy() {

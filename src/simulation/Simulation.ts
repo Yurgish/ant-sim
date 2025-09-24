@@ -1,7 +1,7 @@
 import { Application, Assets, Graphics, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
-import antRedSprite from "/ant-red.png"; // Додаємо червону мурашку
+import antRedSprite from "/ant-red.png"; // Add red ant
 
 import { AntSystem } from "./AntSystem";
 import { Grid } from "./Grid";
@@ -21,8 +21,8 @@ export class Simulation {
   public brushSize: number = 20;
   private isDrawing: boolean = false;
   private isPaused: boolean = false;
-  private userPaused: boolean = false; // Пауза встановлена користувачем
-  private drawingPaused: boolean = false; // Пауза при малюванні
+  private userPaused: boolean = false; // Pause set by user
+  private drawingPaused: boolean = false; // Pause during drawing
 
   private nestPosition: { x: number; y: number } | null = null;
 
@@ -70,24 +70,23 @@ export class Simulation {
 
     await app.init({ canvas: canvas, width, height, backgroundColor: 0xffffff });
 
-    const grid = new Grid(width, height, cellSize);
-    const gridSystem = new GridSystem(grid);
+    const gridSystem = new GridSystem(width, height, cellSize);
 
-    const pheromones = new PheromoneSystem(cellSize, grid);
+    const pheromones = new PheromoneSystem(cellSize, gridSystem.grid);
 
     app.stage.addChild(pheromones.container);
     app.stage.addChild(gridSystem.container);
 
-    // Завантажуємо обидві текстури мурашок
+    // Load both ant textures
     const antTexture: Texture = await Assets.load(antSprite);
     const antRedTexture: Texture = await Assets.load(antRedSprite);
 
-    const antSystem = new AntSystem(antTexture, antRedTexture, width, height);
+    const antSystem = new AntSystem(antTexture, antRedTexture, width, height, cellSize);
     app.stage.addChild(antSystem.container);
 
     const gridGraphics = new Graphics();
 
-    const simulation = new Simulation(app, grid, gridSystem, gridGraphics, antSystem, pheromones);
+    const simulation = new Simulation(app, gridSystem.grid, gridSystem, gridGraphics, antSystem, pheromones);
 
     simulation.setInitialNest(width / 2, height / 2);
 
@@ -105,63 +104,14 @@ export class Simulation {
 
     const deltaTime = ticker.deltaTime / 60;
 
-    // Колбек для сигналізації про споживання їжі
+    // Callback to signal food consumption
     const onFoodConsumed = (row: number, col: number) => {
       this.gridSystem.updateCell(row, col);
     };
 
     this.antSystem.update(deltaTime, this.app.canvas.width, this.app.canvas.height, this.grid, onFoodConsumed);
 
-    const antsReadyToDropPheromone = this.antSystem.getAntsReadyToDropPheromone();
-
-    for (const ant of antsReadyToDropPheromone) {
-      if (ant.carryingFood) {
-        // Мурашка несе їжу - залишає феромони їжі з інформацією про найближчу їжу
-        const foodPositions = this.grid.findFoodPositions();
-        if (foodPositions.length > 0) {
-          // Знаходимо найближчу їжу
-          const antPos = { x: ant.sprite.x, y: ant.sprite.y };
-          let closestFood = foodPositions[0];
-          let minDistance = Math.hypot(antPos.x - closestFood.x, antPos.y - closestFood.y);
-
-          for (const foodPos of foodPositions) {
-            const distance = Math.hypot(antPos.x - foodPos.x, antPos.y - foodPos.y);
-            if (distance < minDistance) {
-              minDistance = distance;
-              closestFood = foodPos;
-            }
-          }
-
-          this.pheromones.addFoodPheromone(ant.sprite.x, ant.sprite.y, closestFood);
-        } else {
-          this.pheromones.add(ant.sprite.x, ant.sprite.y, "food");
-        }
-      } else {
-        // Мурашка шукає їжу - залишає домашні феромони
-        this.pheromones.add(ant.sprite.x, ant.sprite.y, "home");
-        // Для домашніх феромонів передаємо позицію гнізда
-        if (this.nestPosition) {
-          this.grid.addPheromone(ant.sprite.x, ant.sprite.y, "home", 1, this.nestPosition);
-        }
-      }
-    }
-
     this.pheromones.update(deltaTime);
-
-    // Оновлюємо grid (evaporation феромонів)
-    this.grid.updateAll();
-
-    // Оновлюємо напрямки до гнізда і їжі періодично
-    if (this.nestPosition && Math.random() < 0.1) {
-      // 10% шанс на кадр
-      this.grid.calculateHomeDirections(this.nestPosition);
-    }
-
-    // Оновлюємо напрямки до їжі
-    if (Math.random() < 0.05) {
-      // 5% шанс на кадр (рідше, оскільки їжа змінюється частіше)
-      this.grid.calculateFoodDirections();
-    }
 
     this.gridSystem.update();
   }
@@ -273,8 +223,6 @@ export class Simulation {
     }
 
     this.setInitialNest(x, y);
-
-    this.grid.calculateHomeDirections({ x, y });
   }
 
   private updatePauseState() {

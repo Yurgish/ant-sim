@@ -1,4 +1,4 @@
-// Загальні типи для симуляції
+// General types for simulation
 
 export type Vector2D = {
   x: number;
@@ -11,26 +11,29 @@ export type AntState = "searching" | "returning";
 
 export type PheromoneType = "food" | "home";
 
+// New type for ant sensor
+export interface Sensor {
+  position: Vector2D;
+  value: number;
+  radius: number;
+}
+
 export interface SensorSignal {
   food: number;
   foodPheromone: number;
   homePheromone: number;
   obstacle: boolean;
-  homeDirection: Vector2D | null;
-  homeDistance: number;
-  // Додаємо інформацію про їжу
-  foodDirection: Vector2D | null;
-  foodDistance: number;
+}
+
+export interface SensorResult {
+  obstacle: boolean;
+  pheromoneStrength: number;
+  targetStrength: number;
 }
 
 export interface PheromoneData {
   food: number;
   home: number;
-  homeDirection: Vector2D | null;
-  homeDistance: number;
-  // Додаємо інформацію про їжу
-  foodDirection: Vector2D | null;
-  foodDistance: number;
 }
 
 export interface Cell {
@@ -55,5 +58,5 @@ export interface PheromoneParticle {
   intensity: number;
 }
 
-// Колбеки
+// Callbacks
 export type FoodConsumedCallback = (row: number, col: number) => void;

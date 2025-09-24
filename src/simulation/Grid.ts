@@ -1,6 +1,6 @@
-import { MAX_FOOD_PER_CELL, MIN_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "./constants";
-import type { Cell, PheromoneType, Vector2D } from "./types";
-import { GridUtils, VectorUtils } from "./utils";
+import { MAX_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "./constants";
+import type { Cell, PheromoneType } from "./types";
+import { GridUtils } from "./utils";
 
 export class Grid {
   rows: number;
@@ -28,10 +28,6 @@ export class Grid {
         pheromones: {
           food: 0,
           home: 0,
-          homeDirection: null,
-          homeDistance: Infinity,
-          foodDirection: null,
-          foodDistance: Infinity,
         },
         obstacle: false,
         isNest: false,
@@ -44,31 +40,19 @@ export class Grid {
 
     const cell = this.cells[row][col];
 
-    // Випаровування феромонів
     cell.pheromones.food *= PHEROMONE_EVAPORATION_RATE;
     cell.pheromones.home *= PHEROMONE_EVAPORATION_RATE;
-
-    // Очищення слабких феромонів
-    if (cell.pheromones.home < MIN_PHEROMONE_THRESHOLD) {
-      cell.pheromones.homeDirection = null;
-      cell.pheromones.homeDistance = Infinity;
-    }
-
-    if (cell.pheromones.food < MIN_PHEROMONE_THRESHOLD) {
-      cell.pheromones.foodDirection = null;
-      cell.pheromones.foodDistance = Infinity;
-    }
   }
 
-  updateAll(): void {
+  updateAll(deltaTime: number = 1 / 60): void {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        this.updateCell(row, col);
+        this.evaporatePheromones(row, col, deltaTime);
       }
     }
   }
 
-  addPheromone(x: number, y: number, type: PheromoneType, amount: number = 1, targetPosition?: Vector2D): void {
+  addPheromone(x: number, y: number, type: PheromoneType, strength: number): void {
     const { row, col } = GridUtils.getGridPosition(x, y, this.cellSize);
 
     if (!GridUtils.isInBounds(row, col, this.rows, this.cols)) return;
@@ -76,43 +60,50 @@ export class Grid {
     const cell = this.cells[row][col];
 
     if (type === "food") {
-      cell.pheromones.food = Math.min(cell.pheromones.food + amount, MAX_FOOD_PER_CELL);
+      cell.pheromones.food = Math.min(Math.max(strength, cell.pheromones.food), MAX_PHEROMONE_THRESHOLD);
     } else {
-      cell.pheromones.home = Math.min(cell.pheromones.home + amount, MAX_FOOD_PER_CELL);
-
-      // Додаємо інформацію про напрямок до гнізда
-      if (targetPosition) {
-        this.updateDirectionInfo(row, col, targetPosition, "home");
-      }
+      cell.pheromones.home = Math.min(Math.max(strength, cell.pheromones.home), MAX_PHEROMONE_THRESHOLD);
     }
   }
 
-  // Метод для додавання феромонів їжі з інформацією про напрямок
-  addFoodPheromone(x: number, y: number, amount: number, foodPosition: Vector2D): void {
+  // Reinforce existing pheromone
+  reinforcePheromone(x: number, y: number, type: PheromoneType, amount: number = 0.1): void {
     const { row, col } = GridUtils.getGridPosition(x, y, this.cellSize);
 
     if (!GridUtils.isInBounds(row, col, this.rows, this.cols)) return;
 
     const cell = this.cells[row][col];
-    cell.pheromones.food = Math.min(cell.pheromones.food + amount, MAX_FOOD_PER_CELL);
 
-    this.updateDirectionInfo(row, col, foodPosition, "food");
+    if (type === "food") {
+      cell.pheromones.food = Math.min(cell.pheromones.food + amount, MAX_PHEROMONE_THRESHOLD);
+    } else {
+      cell.pheromones.home = Math.min(cell.pheromones.home + amount, MAX_PHEROMONE_THRESHOLD);
+    }
   }
 
-  private updateDirectionInfo(row: number, col: number, targetPosition: Vector2D, type: "home" | "food"): void {
-    const cellCenter = GridUtils.getCellCenter(row, col, this.cellSize);
-    const direction = VectorUtils.direction(cellCenter, targetPosition);
-    const distance = VectorUtils.distance(cellCenter, targetPosition);
+  // Get pheromone strength
+  getPheromoneStrength(x: number, y: number, type: PheromoneType): number {
+    const { row, col } = GridUtils.getGridPosition(x, y, this.cellSize);
+
+    if (!GridUtils.isInBounds(row, col, this.rows, this.cols)) return 0;
 
     const cell = this.cells[row][col];
+    return type === "food" ? cell.pheromones.food : cell.pheromones.home;
+  }
 
-    if (type === "home") {
-      cell.pheromones.homeDirection = direction;
-      cell.pheromones.homeDistance = distance;
-    } else {
-      cell.pheromones.foodDirection = direction;
-      cell.pheromones.foodDistance = distance;
-    }
+  // Evaporate pheromones for specific cell
+  evaporatePheromones(row: number, col: number, deltaTime: number): void {
+    if (!GridUtils.isInBounds(row, col, this.rows, this.cols)) return;
+
+    const cell = this.cells[row][col];
+    const evaporationFactor = Math.pow(PHEROMONE_EVAPORATION_RATE, deltaTime * 60);
+
+    cell.pheromones.food *= evaporationFactor;
+    cell.pheromones.home *= evaporationFactor;
+
+    // Remove very weak pheromones
+    if (cell.pheromones.food < 0.1) cell.pheromones.food = 0;
+    if (cell.pheromones.home < 0.1) cell.pheromones.home = 0;
   }
 
   getCell(x: number, y: number): Cell | null {
@@ -131,89 +122,5 @@ export class Grid {
     }
 
     return this.cells[row][col];
-  }
-
-  // Обчислення напрямків до гнізда для всієї сітки
-  calculateHomeDirections(nestPosition: Vector2D): void {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const cell = this.cells[row][col];
-
-        // Пропускаємо перешкоди
-        if (cell.obstacle) continue;
-
-        // Оновлюємо напрямок тільки якщо є домашні феромони
-        if (cell.pheromones.home > MIN_PHEROMONE_THRESHOLD) {
-          this.updateDirectionInfo(row, col, nestPosition, "home");
-        }
-      }
-    }
-  }
-
-  // Обчислення напрямків до їжі для всієї сітки
-  calculateFoodDirections(): void {
-    // Знаходимо всі позиції з їжею
-    const foodPositions: Vector2D[] = [];
-
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const cell = this.cells[row][col];
-        if (cell.food > 0) {
-          foodPositions.push(GridUtils.getCellCenter(row, col, this.cellSize));
-        }
-      }
-    }
-
-    // Оновлюємо напрямки до найближчої їжі для кожної клітинки з феромонами їжі
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const cell = this.cells[row][col];
-
-        if (cell.pheromones.food > MIN_PHEROMONE_THRESHOLD && foodPositions.length > 0) {
-          const cellCenter = GridUtils.getCellCenter(row, col, this.cellSize);
-
-          // Знаходимо найближчу їжу
-          let closestFood = foodPositions[0];
-          let minDistance = VectorUtils.distance(cellCenter, closestFood);
-
-          for (const foodPos of foodPositions) {
-            const distance = VectorUtils.distance(cellCenter, foodPos);
-            if (distance < minDistance) {
-              minDistance = distance;
-              closestFood = foodPos;
-            }
-          }
-
-          this.updateDirectionInfo(row, col, closestFood, "food");
-        }
-      }
-    }
-  }
-
-  // Знаходження позиції гнізда
-  findNestPosition(): Vector2D | null {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.cells[row][col].isNest) {
-          return GridUtils.getCellCenter(row, col, this.cellSize);
-        }
-      }
-    }
-    return null;
-  }
-
-  // Знаходження всіх позицій їжі
-  findFoodPositions(): Vector2D[] {
-    const positions: Vector2D[] = [];
-
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.cells[row][col].food > 0) {
-          positions.push(GridUtils.getCellCenter(row, col, this.cellSize));
-        }
-      }
-    }
-
-    return positions;
   }
 }
