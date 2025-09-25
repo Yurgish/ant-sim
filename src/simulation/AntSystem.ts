@@ -1,7 +1,7 @@
 import { Container, Texture } from "pixi.js";
 
 import { Ant } from "./Ant";
-import { DEBUG_ENABLED, VISIBLE_SENSORS } from "./constants";
+import { DEBUG_ENABLED, VISIBLE_SENSORS } from "./constants/constants";
 import { Grid } from "./Grid";
 import type { FoodConsumedCallback, Vector2D } from "./types";
 

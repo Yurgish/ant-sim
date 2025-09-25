@@ -1,6 +1,6 @@
 import { Container, Particle, ParticleContainer, Texture } from "pixi.js";
 
-import { ALPHA, COLORS, MAX_FOOD_PER_CELL } from "./constants";
+import { ALPHA, COLORS, MAX_FOOD_PER_CELL } from "./constants/constants";
 import { Grid } from "./Grid";
 import type { Cell, CellParticle, CellType } from "./types";
 

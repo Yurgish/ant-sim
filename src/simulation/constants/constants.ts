@@ -4,6 +4,7 @@ export const VISIBLE_SENSORS = 5;
 
 // Simulation constants
 // Display colors
+// delete
 export const COLORS = {
   NEST: 0x8b4513, // Brown
   FOOD: 0x32cd32, // Green
@@ -18,18 +19,19 @@ export const COLORS = {
 } as const;
 
 // Grid parameters
-export const MAX_FOOD_PER_CELL = 4;
+export const MAX_FOOD_PER_CELL = 4; // delete
 export const GRID_CELL_SIZE = 4;
 export const BASE_ANT_COUNT = 40;
 
 // Pheromone parameters
-export const PHEROMONE_EVAPORATION_RATE = 0.998;
-export const MAX_PHEROMONES = 10000;
-export const BASE_PHEROMONE_STRENGTH = 1;
-export const PHEROMONE_INCREMENT = 0.25;
+export const PHEROMONE_EVAPORATION_RATE = 0.998; // delete
+export const MAX_PHEROMONES = 10000; // delete
+export const BASE_PHEROMONE_STRENGTH = 1; // delete
+export const PHEROMONE_INCREMENT = 0.25; // delete
 // export const MIN_PHEROMONE_TO_REINFORCE = 0.2;
-export const MAX_PHEROMONE_THRESHOLD = 10; // Maximum pheromone level in cell
-export const PHEROMONE_SIZE = 1; // Pheromone size relative to cell size
+export const MAX_PHEROMONE_THRESHOLD = 10; // delete
+export const MIN_PHEROMONE_THRESHOLD = 0.1; // delete
+export const PHEROMONE_SIZE = 0.7; // delete
 
 // Pheromone gradient parameters
 export const MAX_PHEROMONE_MULTIPLIER = 8; // Maximum strength multiplier for fresh pheromones
@@ -53,6 +55,7 @@ export const PHEROMONE_TIMER_INTERVAL = 0.25; // Drop pheromones more often (was
 export const COLLISION_PREDICTION_DISTANCE = 2;
 
 // Alpha channels
+// delete
 export const ALPHA = {
   EMPTY_CELL: 0.1,
   FILLED_CELL: 1.0,

@@ -14,7 +14,7 @@ import {
   SENSOR_ANGLE,
   SENSOR_DISTANCE_CELLS,
   SENSOR_RADIUS_CELLS,
-} from "./constants";
+} from "./constants/constants";
 import { Grid } from "./Grid";
 import type { AntState, FoodConsumedCallback, Sensor, SensorResult, SensorSignal, Vector2D } from "./types";
 import { AngleUtils, GridUtils, VectorUtils } from "./utils";
@@ -82,8 +82,6 @@ export class Ant {
     this.sprite.x = x;
     this.sprite.y = y;
     this.sprite.rotation = 0;
-    this.sprite.scale.set(0.03, 0.03);
-    this.sprite.anchor.set(0.5, 0.5);
 
     // Calculate scale based on cell size
     const desiredSize = ANT_SIZE_IN_CELLS * cellSize;
@@ -249,9 +247,9 @@ export class Ant {
       // Timer resets when food is found, so creates gradient around food sources
       const strengthMultiplier = Math.max(
         1,
-        MAX_PHEROMONE_MULTIPLIER - (this.wanderingTime / PHEROMONE_FADE_TIME) * (MAX_PHEROMONE_MULTIPLIER - 1)
+        MAX_PHEROMONE_MULTIPLIER - (this.wanderingTime / (PHEROMONE_FADE_TIME * 3)) * (MAX_PHEROMONE_MULTIPLIER - 1)
       );
-      pheromoneStrength *= strengthMultiplier;
+      pheromoneStrength = strengthMultiplier;
     }
 
     grid.addPheromone(this.sprite.x, this.sprite.y, pheromoneType, pheromoneStrength);
@@ -564,6 +562,14 @@ export class Ant {
       if (onFoodConsumed) {
         onFoodConsumed(row, col);
       }
+    }
+
+    if (cell.food > 0 && this.state === "returning") {
+      this.wanderingTime = 0;
+    }
+
+    if (cell.isNest && this.state === "searching") {
+      this.wanderingTime = 0;
     }
 
     // Interaction with nest (only while returning with food)

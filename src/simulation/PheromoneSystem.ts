@@ -7,7 +7,7 @@ import {
   MAX_PHEROMONE_THRESHOLD,
   MAX_PHEROMONES,
   PHEROMONE_SIZE,
-} from "./constants";
+} from "./constants/constants";
 import { Grid } from "./Grid";
 import type { PheromoneParticle, PheromoneType } from "./types";
 import { GridUtils } from "./utils";

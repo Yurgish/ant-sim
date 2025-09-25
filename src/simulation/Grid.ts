@@ -1,4 +1,4 @@
-import { MAX_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "./constants";
+import { MAX_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "./constants/constants";
 import type { Cell, PheromoneType } from "./types";
 import { GridUtils } from "./utils";
 

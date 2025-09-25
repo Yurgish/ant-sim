@@ -1,4 +1,4 @@
-import { BASE_ANT_COUNT, GRID_CELL_SIZE } from "@simulation/constants";
+import { BASE_ANT_COUNT, GRID_CELL_SIZE } from "@simulation/constants/constants";
 import { Simulation } from "@simulation/Simulation";
 import { button, useControls } from "leva";
 import { useEffect, useRef, useState } from "react";
