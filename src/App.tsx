@@ -1,4 +1,4 @@
-import { Canvas } from "@components/Canvas";
+import { Canvas } from "@components/NC";
 import { Leva } from "leva";
 
 function App() {

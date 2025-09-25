@@ -1,5 +1,5 @@
 // debug
-export const DEBUG_ENABLED = false;
+export const DEBUG_ENABLED = true;
 export const VISIBLE_SENSORS = 5;
 
 // Simulation constants
@@ -38,14 +38,14 @@ export const MAX_PHEROMONE_MULTIPLIER = 8; // Maximum strength multiplier for fr
 export const PHEROMONE_FADE_TIME = 16; // Time in seconds for pheromone strength to fade to base
 //export const PHEROMONE_SPREAD_RADIUS_CELLS = 2; // Pheromone spread radius in cells
 
-// Ant parameters
+// Ant parameters - moved to ant.ts
 export const DEFAULT_ANT_COUNT = 100;
 export const ANT_MAX_SPEED = 1.2; // Slightly reduce speed
 export const ANT_STEER_STRENGTH = 0.2; // Increase steering force
 export const ANT_WANDER_STRENGTH = 0.3; // Reduce random wandering
 export const ANT_SIZE_IN_CELLS = 3;
 
-// Sensor parameters (in cells)
+// Sensor parameters (in cells) - moved to ant.ts
 export const SENSOR_DISTANCE_CELLS = 5; // Sensor distance in cells (was too far)
 export const SENSOR_ANGLE = Math.PI / 3;
 export const SENSOR_RADIUS_CELLS = 6; // Sensor radius for pheromone detection in cells (smaller radius)
@@ -64,7 +64,7 @@ export const ALPHA = {
 
 // Sizes and distances
 export const NEST_SIZE_MULTIPLIER = 2.5; // Multiplier for nest size calculation
-export const EDGE_COLLISION_MARGIN = 10; // Edge margin for collisions
+export const EDGE_COLLISION_MARGIN = 10; // Edge margin for collisions - delete
 
 // Physics settings
 export const COLLISION_DAMPING = 0.8; // Collision damping

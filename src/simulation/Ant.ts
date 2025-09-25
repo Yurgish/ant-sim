@@ -160,7 +160,10 @@ export class Ant {
     const maxValue = Math.max(this.leftSensor.value, this.centreSensor.value, this.rightSensor.value);
     if (maxValue < 4) {
       // Threshold: weak signal — wander (phero <0.4 baseline)
-      const wanderMult = maxValue > 0 ? 1 - maxValue / 2 : 1; // Gradually reduce noise
+      const minWanderMult = 0.1; // 10% мінімального шуму
+      const maxWanderMult = 1.0;
+      const signalClarity = Math.min(maxValue / 4, 1); // 0, коли signal < 0; 1, коли signal >= 4
+      const wanderMult = maxWanderMult - signalClarity * (maxWanderMult - minWanderMult); // Gradually reduce noise
       this.desiredDirection.x += (Math.random() - 0.5) * this.wanderStrength * wanderMult;
       this.desiredDirection.y += (Math.random() - 0.5) * this.wanderStrength * wanderMult;
     }

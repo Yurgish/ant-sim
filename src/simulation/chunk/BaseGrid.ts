@@ -90,6 +90,7 @@ export abstract class BaseGrid<T extends BaseChunk> {
   }
 
   protected getChunk(row: number, col: number): T | null {
+    if (isNaN(row) || isNaN(col)) return null;
     if (row < 0 || col < 0 || row >= this.rows || col >= this.cols) return null;
     const { chunkRow, chunkCol } = this.getChunkIndices(row, col);
     return this.chunks[chunkRow][chunkCol];
@@ -229,12 +230,9 @@ export abstract class BaseGrid<T extends BaseChunk> {
 
   update(delta: number): void {
     const chunksToUpdate = Array.from(this.dirtyChunks);
-
     this.dirtyChunks.clear();
-
     for (const chunk of chunksToUpdate) {
       chunk.update(delta);
-
       if (chunk.dirty) {
         this.dirtyChunks.add(chunk);
       }

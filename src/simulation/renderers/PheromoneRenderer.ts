@@ -13,9 +13,9 @@ export class PheromoneRenderer {
   private cellSize: number;
   private chunkVisuals: Map<PheromoneChunk, PheromoneVisuals> = new Map();
 
-  constructor(field: PheromoneField, cellSize: number) {
+  constructor(field: PheromoneField) {
     this.field = field;
-    this.cellSize = cellSize;
+    this.cellSize = this.field.cellSize;
 
     this.container = new ParticleContainer({
       dynamicProperties: {
@@ -48,12 +48,10 @@ export class PheromoneRenderer {
     }
   }
 
-  update(deltaMS: number): void {
-    const deltaSeconds = deltaMS / 1000;
-
+  update(deltaTime: number): void {
     const chunksToRender = Array.from(this.field.dirtyChunks);
 
-    this.field.update(deltaSeconds);
+    this.field.update(deltaTime);
 
     for (const chunk of chunksToRender) {
       this.updateChunkVisual(chunk);

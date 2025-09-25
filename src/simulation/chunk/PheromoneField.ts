@@ -28,6 +28,11 @@ export class PheromoneField extends BaseGrid<PheromoneChunk> {
     this.dirtyChunks.add(chunk);
   }
 
+  addStrengthPx(x: number, y: number, typeId: PheromoneTypeId, strength: number): void {
+    const { row, col } = this.pixelsToGrid(x, y);
+    this.addStrength(row, col, typeId, strength);
+  }
+
   update(delta: number): void {
     const chunksToUpdate = Array.from(this.dirtyChunks);
 

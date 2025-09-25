@@ -57,6 +57,3 @@ export interface PheromoneParticle {
   type: PheromoneType;
   intensity: number;
 }
-
-// Callbacks
-export type FoodConsumedCallback = (row: number, col: number) => void;
