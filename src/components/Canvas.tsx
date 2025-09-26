@@ -1,4 +1,4 @@
-import { BASE_ANT_COUNT, GRID_CELL_SIZE } from "@simulation/constants/constants";
+import { GRID_CELL_SIZE } from "@simulation/constants/constants";
 import { Simulation } from "@simulation/Simulation";
 import { button, useControls } from "leva";
 import { useEffect, useRef, useState } from "react";
@@ -23,12 +23,11 @@ export function Canvas() {
     }
 
     try {
-      simulationRef.current = await Simulation.create(
+      simulationRef.current = await Simulation.init(
         containerRef.current,
         window.innerWidth,
         window.innerHeight,
-        GRID_CELL_SIZE,
-        BASE_ANT_COUNT
+        GRID_CELL_SIZE
       );
       setIsSimulationReady(true);
     } catch (error) {
@@ -67,12 +66,11 @@ export function Canvas() {
       }
 
       try {
-        simulationRef.current = await Simulation.create(
+        simulationRef.current = await Simulation.init(
           containerRef.current,
           window.innerWidth,
           window.innerHeight,
-          GRID_CELL_SIZE,
-          BASE_ANT_COUNT
+          GRID_CELL_SIZE
         );
         setIsSimulationReady(true);
       } catch (error) {
@@ -94,9 +92,9 @@ export function Canvas() {
   useEffect(() => {
     if (isSimulationReady && simulationRef.current) {
       simulationRef.current.setAntCount(antCount);
-      simulationRef.current.setAntsVisible(showAnts);
-      simulationRef.current.setPheromonesVisible(showPheromones);
-      simulationRef.current.setGridVisible(showGrid);
+      // simulationRef.current.setAntsVisible(showAnts);
+      // simulationRef.current.setPheromonesVisible(showPheromones);
+      // simulationRef.current.setGridVisible(showGrid);
       simulationRef.current.setBrushType(brushType as "nest" | "food" | "obstacle" | "empty");
       simulationRef.current.setBrushSize(brushSize);
       if (isPaused) {

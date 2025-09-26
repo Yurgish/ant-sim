@@ -1,64 +1,51 @@
-import { Application, Assets, Graphics, Texture } from "pixi.js";
+import { Application, Assets, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
-import antRedSprite from "/ant-red.png"; // Add red ant
+import antRedSprite from "/ant-red.png";
 
-import { AntSystem } from "./AntSystem";
-import { Grid } from "./Grid";
-import { GridSystem } from "./GridSystem";
-import { PheromoneSystem } from "./PheromoneSystem";
+import { Grid } from "./chunk/Grid";
+import { PheromoneField } from "./chunk/PheromoneField";
+import { Colony } from "./Colony";
+import { DEBUG_ENABLED } from "./constants/constants";
+import { GridRenderer } from "./renderers/GridRenderer";
+import { PheromoneRenderer } from "./renderers/PheromoneRenderer";
 
 export class Simulation {
   app: Application;
   grid: Grid;
-  gridSystem: GridSystem;
-  gridGraphics: Graphics;
-  antSystem: AntSystem;
-  pheromones: PheromoneSystem;
+  colony: Colony;
+  pheromoneField: PheromoneField;
+
+  gridRenderer: GridRenderer;
+  pheromoneRenderer: PheromoneRenderer;
+
   private updateFunction: (ticker: { deltaTime: number }) => void;
 
   public currentBrushType: "nest" | "food" | "obstacle" | "empty" = "food";
   public brushSize: number = 20;
   private isDrawing: boolean = false;
   private isPaused: boolean = false;
-  private userPaused: boolean = false; // Pause set by user
-  private drawingPaused: boolean = false; // Pause during drawing
-
-  private nestPosition: { x: number; y: number } | null = null;
+  private userPaused: boolean = false;
+  private drawingPaused: boolean = false;
 
   private constructor(
     app: Application,
     grid: Grid,
-    gridSystem: GridSystem,
-    gridGraphics: Graphics,
-    antSystem: AntSystem,
-    pheromones: PheromoneSystem
+    pheromoneField: PheromoneField,
+    colony: Colony,
+    gridRenderer: GridRenderer,
+    pheromoneRenderer: PheromoneRenderer
   ) {
     this.app = app;
     this.grid = grid;
-    this.gridSystem = gridSystem;
-    this.gridGraphics = gridGraphics;
-    this.antSystem = antSystem;
-    this.pheromones = pheromones;
+    this.pheromoneField = pheromoneField;
+    this.colony = colony;
+    this.gridRenderer = gridRenderer;
+    this.pheromoneRenderer = pheromoneRenderer;
     this.updateFunction = this.update.bind(this);
   }
 
-  destroy() {
-    this.app.ticker.remove(this.updateFunction);
-
-    this.gridGraphics.destroy();
-    this.antSystem.destroy();
-
-    this.app.destroy(true, { children: true });
-  }
-
-  static async create(
-    container: HTMLElement,
-    width: number,
-    height: number,
-    cellSize: number,
-    initialAntCount: number = 100
-  ): Promise<Simulation> {
+  static async init(container: HTMLElement, width: number, height: number, cellSize: number): Promise<Simulation> {
     let canvas = container.querySelector("canvas") as HTMLCanvasElement;
 
     if (!canvas) {
@@ -70,79 +57,60 @@ export class Simulation {
 
     await app.init({ canvas: canvas, width, height, backgroundColor: 0xffffff });
 
-    const gridSystem = new GridSystem(width, height, cellSize);
+    const CHUNK_SIZE = 16;
+    const grid = new Grid(width, height, cellSize, CHUNK_SIZE);
+    const pheromoneField = new PheromoneField(width, height, cellSize, CHUNK_SIZE / 2);
 
-    const pheromones = new PheromoneSystem(cellSize, gridSystem.grid);
+    const pheromoneRenderer = new PheromoneRenderer(pheromoneField);
+    const gridRenderer = new GridRenderer(grid);
 
-    app.stage.addChild(pheromones.container);
-    app.stage.addChild(gridSystem.container);
+    app.stage.addChild(gridRenderer.getContainer());
+    app.stage.addChild(pheromoneRenderer.getContainer());
 
-    // Load both ant textures
     const antTexture: Texture = await Assets.load(antSprite);
     const antRedTexture: Texture = await Assets.load(antRedSprite);
 
-    const antSystem = new AntSystem(antTexture, antRedTexture, width, height, cellSize);
-    app.stage.addChild(antSystem.container);
+    const colony = new Colony(antTexture, antRedTexture, width, height, cellSize);
+    app.stage.addChild(colony.getContainer());
 
-    const gridGraphics = new Graphics();
+    const simulation = new Simulation(app, grid, pheromoneField, colony, gridRenderer, pheromoneRenderer);
 
-    const simulation = new Simulation(app, gridSystem.grid, gridSystem, gridGraphics, antSystem, pheromones);
+    const nestX = width / 2;
+    const nestY = height / 2;
+    const { row: nestRow, col: nestCol } = grid.pixelsToGrid(nestX, nestY);
 
-    simulation.setInitialNest(width / 2, height / 2);
+    console.log(`Creating initial nest at (${nestRow}, ${nestCol})`);
+    grid.setCellTypeInRadius(nestRow, nestCol, 3, "nest");
+    colony.setNestPosition(nestX, nestY);
 
-    simulation.setAntCount(initialAntCount);
+    colony.setAntCount(100);
 
     simulation.setupMouseEvents();
 
     app.ticker.add(simulation.updateFunction);
 
+    if (DEBUG_ENABLED) {
+      app.stage.addChild(pheromoneRenderer.getDebugContainer());
+      app.stage.addChild(gridRenderer.getDebugContainer());
+    }
+
     return simulation;
   }
 
-  update(ticker: { deltaTime: number }) {
-    if (this.isPaused) return;
-
+  private update = (ticker: { deltaTime: number }): void => {
     const deltaTime = ticker.deltaTime / 60;
 
-    // Callback to signal food consumption
-    const onFoodConsumed = (row: number, col: number) => {
-      this.gridSystem.updateCell(row, col);
-    };
-
-    this.antSystem.update(deltaTime, this.app.canvas.width, this.app.canvas.height, this.grid, onFoodConsumed);
-
-    this.pheromones.update(deltaTime);
-
-    this.gridSystem.update();
-  }
-
-  setAntCount(newCount: number) {
-    this.antSystem.setCount(newCount);
-  }
-
-  setPheromonesVisible(visible: boolean) {
-    if (visible) {
-      if (!this.app.stage.children.includes(this.pheromones.container)) {
-        this.app.stage.addChild(this.pheromones.container);
-      }
-    } else {
-      if (this.app.stage.children.includes(this.pheromones.container)) {
-        this.app.stage.removeChild(this.pheromones.container);
-      }
+    if (!this.isPaused) {
+      this.colony.update(deltaTime, this.grid, this.pheromoneField);
     }
-  }
 
-  setAntsVisible(visible: boolean) {
-    if (visible) {
-      if (!this.app.stage.children.includes(this.antSystem.container)) {
-        this.app.stage.addChild(this.antSystem.container);
-      }
-    } else {
-      if (this.app.stage.children.includes(this.antSystem.container)) {
-        this.app.stage.removeChild(this.antSystem.container);
-      }
+    this.gridRenderer.update();
+
+    if (!this.isPaused) {
+      this.pheromoneField.update(deltaTime);
+      this.pheromoneRenderer.update();
     }
-  }
+  };
 
   setupMouseEvents() {
     this.app.canvas.style.cursor = "crosshair";
@@ -180,11 +148,23 @@ export class Simulation {
     this.updatePauseState();
   }
 
+  setAntCount(count: number) {
+    this.colony.setAntCount(count);
+  }
+
   private drawAtPosition(x: number, y: number) {
     if (this.currentBrushType === "nest") {
       this.moveNest(x, y);
     } else {
-      this.gridSystem.setCellTypeInRadius(x, y, this.brushSize, this.currentBrushType);
+      const { row, col } = this.grid.pixelsToGrid(x, y);
+      const radiusCells = this.brushSize / this.grid.cellSize;
+
+      this.grid.setCellTypeInRadius(
+        row,
+        col,
+        radiusCells,
+        this.currentBrushType === "empty" ? "empty" : this.currentBrushType
+      );
     }
   }
 
@@ -196,33 +176,12 @@ export class Simulation {
     this.brushSize = size;
   }
 
-  setGridVisible(visible: boolean) {
-    if (visible) {
-      if (!this.app.stage.children.includes(this.gridSystem.container)) {
-        this.app.stage.addChild(this.gridSystem.container);
-      }
-    } else {
-      if (this.app.stage.children.includes(this.gridSystem.container)) {
-        this.app.stage.removeChild(this.gridSystem.container);
-      }
-    }
-  }
-
-  setInitialNest(x: number, y: number) {
-    this.nestPosition = { x, y };
-    this.antSystem.setNestPosition(x, y);
-
-    const nestSize = (5 * this.grid.cellSize) / 2;
-    this.gridSystem.setCellTypeInRadius(x, y, nestSize, "nest");
-  }
-
   moveNest(x: number, y: number) {
-    if (this.nestPosition) {
-      const nestSize = (5 * this.grid.cellSize) / 2;
-      this.gridSystem.setCellTypeInRadius(this.nestPosition.x, this.nestPosition.y, nestSize, "empty");
-    }
+    const { row, col } = this.grid.pixelsToGrid(x, y);
+    const nestRadius = 3;
 
-    this.setInitialNest(x, y);
+    this.grid.setCellTypeInRadius(row, col, nestRadius, "nest");
+    this.colony.setNestPosition(x, y);
   }
 
   private updatePauseState() {
@@ -246,5 +205,22 @@ export class Simulation {
 
   isPausedState(): boolean {
     return this.isPaused;
+  }
+
+  destroy(): void {
+    // Stop ticker
+    this.app.ticker.remove(this.update, this);
+
+    // Destroy input
+    // if (this.inputManager) this.inputManager.destroy();
+    // if (this.drawingSystem) this.drawingSystem.destroy();
+
+    // Destroy components
+    if (this.colony) this.colony.destroy();
+    if (this.gridRenderer) this.gridRenderer.destroy();
+    if (this.pheromoneRenderer) this.pheromoneRenderer.destroy();
+
+    // Destroy PIXI app
+    this.app.destroy(true);
   }
 }

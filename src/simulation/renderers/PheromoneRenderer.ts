@@ -1,8 +1,12 @@
 import type { PheromoneChunk } from "@simulation/chunk/PheromoneChunk";
 import type { PheromoneField } from "@simulation/chunk/PheromoneField";
 import { DEBUG_ENABLED } from "@simulation/constants/constants";
-import { MAX_PHEROMONE_THRESHOLD, MIN_PHEROMONE_THRESHOLD, PHEROMONE_SIZE } from "@simulation/constants/constants";
-import { PHEROMONE_COLORS_MAP } from "@simulation/constants/pheromones";
+import {
+  MAX_PHEROMONE_THRESHOLD,
+  MIN_PHEROMONE_THRESHOLD,
+  PHEROMONE_COLORS_MAP,
+  PHEROMONE_SIZE,
+} from "@simulation/constants/pheromones";
 import { PHEROMONE_TYPES, type PheromoneTypeId } from "@simulation/types/PheromoneTypes";
 import { Container, Particle, ParticleContainer, Sprite, Texture } from "pixi.js";
 
