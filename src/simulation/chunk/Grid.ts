@@ -1,4 +1,4 @@
-import { MAX_FOOD_PER_CELL } from "@simulation/constants/constants";
+import { MAX_FOOD_PER_CELL } from "@simulation/constants/grid";
 import type { CellType } from "@simulation/types";
 
 import { BaseGrid } from "./BaseGrid";
@@ -23,6 +23,7 @@ export class Grid extends BaseGrid<GridChunk> {
     const { localRow, localCol } = this.getChunkIndices(row, col);
 
     chunk.set(localRow, localCol, properties);
+    chunk.setDirty();
 
     this.dirtyChunks.add(chunk);
   }

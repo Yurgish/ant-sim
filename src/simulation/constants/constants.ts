@@ -24,7 +24,7 @@ export const GRID_CELL_SIZE = 4;
 export const BASE_ANT_COUNT = 40;
 
 // Pheromone parameters
-export const PHEROMONE_EVAPORATION_RATE = 0.998; // delete
+export const PHEROMONE_EVAPORATION_RATE = 0.995; // delete
 export const MAX_PHEROMONES = 10000; // delete
 export const BASE_PHEROMONE_STRENGTH = 1; // delete
 export const PHEROMONE_INCREMENT = 0.25; // delete

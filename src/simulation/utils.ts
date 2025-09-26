@@ -1,18 +1,24 @@
 import type { Vector2D } from "./types";
 
-// Vector utilities
 export class VectorUtils {
   static create(x: number, y: number): Vector2D {
+    if (!isFinite(x) || !isFinite(y)) return { x: 1, y: 0 };
     return { x, y };
   }
 
   static distance(a: Vector2D, b: Vector2D): number {
-    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    return isFinite(d) ? d : 0;
   }
 
   static normalize(vector: Vector2D): Vector2D {
-    const length = Math.hypot(vector.x, vector.y) || 1;
-    return { x: vector.x / length, y: vector.y / length };
+    const magnitude = Math.hypot(vector.x, vector.y);
+    if (!isFinite(magnitude) || magnitude === 0) {
+      return { x: 1, y: 0 }; // fallback direction
+    }
+    return { x: vector.x / magnitude, y: vector.y / magnitude };
   }
 
   static direction(from: Vector2D, to: Vector2D): Vector2D {
@@ -20,6 +26,7 @@ export class VectorUtils {
   }
 
   static multiply(vector: Vector2D, scalar: number): Vector2D {
+    if (!isFinite(scalar)) return { x: 0, y: 0 };
     return { x: vector.x * scalar, y: vector.y * scalar };
   }
 
@@ -32,14 +39,17 @@ export class VectorUtils {
   }
 
   static dot(a: Vector2D, b: Vector2D): number {
-    return a.x * b.x + a.y * b.y;
+    const v = a.x * b.x + a.y * b.y;
+    return isFinite(v) ? v : 0;
   }
 
   static angle(vector: Vector2D): number {
-    return Math.atan2(vector.y, vector.x);
+    const angle = Math.atan2(vector.y, vector.x);
+    return isFinite(angle) ? angle : 0;
   }
 
   static fromAngle(angle: number): Vector2D {
+    if (!isFinite(angle)) return { x: 1, y: 0 };
     return { x: Math.cos(angle), y: Math.sin(angle) };
   }
 }
@@ -62,36 +72,36 @@ export class AngleUtils {
 }
 
 // Grid utilities
-export class GridUtils {
-  static getKey(row: number, col: number): string {
-    return `${row}-${col}`;
-  }
+// export class GridUtils {
+//   static getKey(row: number, col: number): string {
+//     return `${row}-${col}`;
+//   }
 
-  static getGridPosition(x: number, y: number, cellSize: number): { row: number; col: number } {
-    return {
-      row: Math.floor(y / cellSize),
-      col: Math.floor(x / cellSize),
-    };
-  }
+//   static getGridPosition(x: number, y: number, cellSize: number): { row: number; col: number } {
+//     return {
+//       row: Math.floor(y / cellSize),
+//       col: Math.floor(x / cellSize),
+//     };
+//   }
 
-  static getCellCenter(row: number, col: number, cellSize: number): Vector2D {
-    return {
-      x: col * cellSize + cellSize / 2,
-      y: row * cellSize + cellSize / 2,
-    };
-  }
+//   static getCellCenter(row: number, col: number, cellSize: number): Vector2D {
+//     return {
+//       x: col * cellSize + cellSize / 2,
+//       y: row * cellSize + cellSize / 2,
+//     };
+//   }
 
-  static getCellPosition(row: number, col: number, cellSize: number): Vector2D {
-    return {
-      x: col * cellSize,
-      y: row * cellSize,
-    };
-  }
+//   static getCellPosition(row: number, col: number, cellSize: number): Vector2D {
+//     return {
+//       x: col * cellSize,
+//       y: row * cellSize,
+//     };
+//   }
 
-  static isInBounds(row: number, col: number, rows: number, cols: number): boolean {
-    return row >= 0 && row < rows && col >= 0 && col < cols;
-  }
-}
+//   static isInBounds(row: number, col: number, rows: number, cols: number): boolean {
+//     return row >= 0 && row < rows && col >= 0 && col < cols;
+//   }
+// }
 
 // Pheromone utilities
 export class PheromoneUtils {

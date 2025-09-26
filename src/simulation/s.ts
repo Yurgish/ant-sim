@@ -59,17 +59,13 @@ export class Simulation {
 
     const CHUNK_SIZE = 16;
     const grid = new Grid(width, height, cellSize, CHUNK_SIZE);
-    const pheromoneField = new PheromoneField(width, height, cellSize, CHUNK_SIZE);
+    const pheromoneField = new PheromoneField(width, height, cellSize, CHUNK_SIZE / 2);
 
     const pheromoneRenderer = new PheromoneRenderer(pheromoneField);
     const gridRenderer = new GridRenderer(grid);
 
     app.stage.addChild(gridRenderer.getContainer());
     app.stage.addChild(pheromoneRenderer.getContainer());
-
-    if (DEBUG_ENABLED) {
-      app.stage.addChild(gridRenderer.getDebugContainer());
-    }
 
     const antTexture: Texture = await Assets.load(antSprite);
     const antRedTexture: Texture = await Assets.load(antRedSprite);
@@ -79,19 +75,24 @@ export class Simulation {
 
     const simulation = new Simulation(app, grid, pheromoneField, colony, gridRenderer, pheromoneRenderer);
 
-    colony.setNestPosition(width / 2, height / 2);
-    const nestPos = colony.getNestPosition();
+    const nestX = width / 2;
+    const nestY = height / 2;
+    const { row: nestRow, col: nestCol } = grid.pixelsToGrid(nestX, nestY);
 
-    if (nestPos) {
-      const { row, col } = grid.pixelsToGrid(nestPos.x, nestPos.y);
-      grid.setCellTypeInRadius(row, col, 3, "nest");
-    }
+    console.log(`Creating initial nest at (${nestRow}, ${nestCol})`);
+    grid.setCellTypeInRadius(nestRow, nestCol, 3, "nest");
+    colony.setNestPosition(nestX, nestY);
 
     colony.setAntCount(100);
 
     simulation.setupMouseEvents();
 
     app.ticker.add(simulation.updateFunction);
+
+    if (DEBUG_ENABLED) {
+      app.stage.addChild(pheromoneRenderer.getDebugContainer());
+      app.stage.addChild(gridRenderer.getDebugContainer());
+    }
 
     return simulation;
   }
@@ -101,12 +102,13 @@ export class Simulation {
 
     if (!this.isPaused) {
       this.colony.update(deltaTime, this.grid, this.pheromoneField);
+    }
 
-      this.gridRenderer.update();
-      this.pheromoneRenderer.update(deltaTime);
+    this.gridRenderer.update();
 
-      this.grid.update(deltaTime);
+    if (!this.isPaused) {
       this.pheromoneField.update(deltaTime);
+      this.pheromoneRenderer.update();
     }
   };
 

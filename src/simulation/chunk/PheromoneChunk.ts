@@ -1,4 +1,4 @@
-import { MIN_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "@simulation/constants/constants";
+import { MIN_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "@simulation/constants/pheromones";
 import { PHEROMONE_TYPES, type PheromoneTypeId } from "@simulation/types/PheromoneTypes";
 
 import { BaseChunk } from "./BaseChunk"; // Припустимо, BaseChunk.getIndex тепер public
@@ -34,10 +34,10 @@ export class PheromoneChunk extends BaseChunk {
     this.setDirty();
   }
 
-  update(delta: number): void {
+  update(deltaTime: number): void {
     if (!this.dirty) return;
 
-    const evaporation = Math.pow(PHEROMONE_EVAPORATION_RATE, delta * 60);
+    const evaporation = Math.pow(PHEROMONE_EVAPORATION_RATE, deltaTime * 60);
     let hasSignificantPheromones = false;
 
     for (const data of this.pheromoneData.values()) {

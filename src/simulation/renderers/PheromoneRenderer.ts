@@ -1,17 +1,21 @@
 import type { PheromoneChunk } from "@simulation/chunk/PheromoneChunk";
 import type { PheromoneField } from "@simulation/chunk/PheromoneField";
+import { DEBUG_ENABLED } from "@simulation/constants/constants";
 import { MAX_PHEROMONE_THRESHOLD, MIN_PHEROMONE_THRESHOLD, PHEROMONE_SIZE } from "@simulation/constants/constants";
 import { PHEROMONE_COLORS_MAP } from "@simulation/constants/pheromones";
 import { PHEROMONE_TYPES, type PheromoneTypeId } from "@simulation/types/PheromoneTypes";
-import { Particle, ParticleContainer, Texture } from "pixi.js";
+import { Container, Particle, ParticleContainer, Sprite, Texture } from "pixi.js";
 
 type PheromoneVisuals = Map<PheromoneTypeId, (Particle | null)[]>;
 
 export class PheromoneRenderer {
   private container: ParticleContainer;
+  private debugContainer: Container;
+
   private field: PheromoneField;
   private cellSize: number;
   private chunkVisuals: Map<PheromoneChunk, PheromoneVisuals> = new Map();
+  private debugParticles: Map<PheromoneChunk, Sprite> = new Map();
 
   constructor(field: PheromoneField) {
     this.field = field;
@@ -26,7 +30,14 @@ export class PheromoneRenderer {
       },
     });
 
+    this.debugContainer = new Container();
+    this.debugContainer.zIndex = 999;
+
     this.initializeVisuals();
+
+    if (DEBUG_ENABLED) {
+      this.initializeDebugParticles();
+    }
   }
 
   private initializeVisuals(): void {
@@ -48,10 +59,46 @@ export class PheromoneRenderer {
     }
   }
 
-  update(deltaTime: number): void {
+  private initializeDebugParticles(): void {
+    for (let r = 0; r < this.field.chunkRows; r++) {
+      for (let c = 0; c < this.field.chunkCols; c++) {
+        const chunk = this.field.chunks[r][c];
+
+        const startX = c * this.field.chunkSize * this.field.cellSize;
+        const startY = r * this.field.chunkSize * this.field.cellSize;
+        const chunkWidth = this.field.chunkSize * this.field.cellSize;
+        const chunkHeight = this.field.chunkSize * this.field.cellSize;
+
+        const debugParticle = new Sprite(Texture.WHITE);
+        debugParticle.x = startX;
+        debugParticle.y = startY;
+        debugParticle.width = chunkWidth;
+        debugParticle.height = chunkHeight;
+        debugParticle.alpha = 0.1;
+        debugParticle.tint = 0x8844ff;
+
+        this.debugContainer.addChild(debugParticle);
+        this.debugParticles.set(chunk, debugParticle);
+      }
+    }
+  }
+
+  update(): void {
     const chunksToRender = Array.from(this.field.dirtyChunks);
 
-    this.field.update(deltaTime);
+    if (DEBUG_ENABLED) {
+      for (const particle of this.debugParticles.values()) {
+        particle.alpha = 0.1;
+        particle.tint = 0x8844ff;
+      }
+
+      for (const chunk of chunksToRender) {
+        const particle = this.debugParticles.get(chunk);
+        if (particle) {
+          particle.alpha = 0.7;
+        }
+      }
+    }
 
     for (const chunk of chunksToRender) {
       this.updateChunkVisual(chunk);
@@ -113,16 +160,22 @@ export class PheromoneRenderer {
       particle.tint = color;
     } else if (particle) {
       this.container.removeParticle(particle);
-      particlesArray[localIndex] = null; // Очищаємо посилання
+      particlesArray[localIndex] = null;
     }
   }
 
-  getContainer() {
+  getContainer(): ParticleContainer {
     return this.container;
+  }
+
+  getDebugContainer(): Container {
+    return this.debugContainer;
   }
 
   destroy(): void {
     this.chunkVisuals.clear();
+    this.debugParticles.clear();
+    this.debugContainer.destroy({ children: true });
     this.container.destroy({ children: true });
   }
 }

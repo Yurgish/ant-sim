@@ -2,17 +2,17 @@ import type { Grid } from "@simulation/chunk/Grid";
 import type { GridCell, GridChunk } from "@simulation/chunk/GridChunk";
 import { DEBUG_ENABLED } from "@simulation/constants/constants";
 import { GRID_ALPHA, GRID_COLORS, MAX_FOOD_PER_CELL } from "@simulation/constants/grid";
-import { Particle, ParticleContainer, Texture } from "pixi.js";
+import { Container, Particle, ParticleContainer, Sprite, Texture } from "pixi.js";
 
 type CellParticleMap = Map<GridChunk, (Particle | null)[]>;
 
 export class GridRenderer {
   private container: ParticleContainer;
-  private debugContainer: ParticleContainer;
+  private debugContainer: Container;
 
   private grid: Grid;
   private cellParticles: CellParticleMap = new Map();
-  private debugParticles: Map<GridChunk, Particle> = new Map();
+  private debugParticles: Map<GridChunk, Sprite> = new Map();
 
   constructor(grid: Grid) {
     this.grid = grid;
@@ -26,14 +26,8 @@ export class GridRenderer {
       },
     });
 
-    this.debugContainer = new ParticleContainer({
-      dynamicProperties: {
-        position: false,
-        alpha: true,
-        scale: false,
-        tint: true,
-      },
-    });
+    this.debugContainer = new Container();
+    this.debugContainer.zIndex = 1000;
 
     this.initializeVisuals();
 
@@ -62,17 +56,15 @@ export class GridRenderer {
         const chunkWidth = this.grid.chunkSize * this.grid.cellSize;
         const chunkHeight = this.grid.chunkSize * this.grid.cellSize;
 
-        const debugParticle = new Particle(Texture.WHITE);
+        const debugParticle = new Sprite(Texture.WHITE);
         debugParticle.x = startX;
         debugParticle.y = startY;
-        debugParticle.scaleX = chunkWidth;
-        debugParticle.scaleY = chunkHeight;
-        debugParticle.anchorX = 0;
-        debugParticle.anchorY = 0;
-        debugParticle.alpha = 0.5; // базова прозорість
-        debugParticle.tint = 0x4444ff; // базовий колір — синій
+        debugParticle.width = chunkWidth;
+        debugParticle.height = chunkHeight;
+        debugParticle.alpha = 0.1;
+        debugParticle.tint = 0x4444ff;
 
-        this.debugContainer.addParticle(debugParticle);
+        this.debugContainer.addChild(debugParticle);
         this.debugParticles.set(chunk, debugParticle);
       }
     }
@@ -81,15 +73,13 @@ export class GridRenderer {
   update(): void {
     const chunksToRender = Array.from(this.grid.dirtyChunks);
 
-    // 🔹 завжди показуємо всі чанки, dirty робимо червоними
     if (DEBUG_ENABLED) {
       for (const [chunk, particle] of this.debugParticles.entries()) {
-        if (this.grid.dirtyChunks.has(chunk)) {
+        if (chunksToRender.includes(chunk)) {
           particle.alpha = 0.4;
           particle.tint = 0xff0000;
-          console.log("Marked dirty for eat at row/col:", chunk.globalRow, chunk.globalCol);
         } else {
-          particle.alpha = 0.5;
+          particle.alpha = 0.1;
           particle.tint = 0x4444ff;
         }
       }
@@ -97,7 +87,9 @@ export class GridRenderer {
 
     for (const chunk of chunksToRender) {
       this.updateChunkVisual(chunk);
+      chunk.clearDirty();
     }
+    this.grid.dirtyChunks.clear();
   }
 
   private updateChunkVisual(chunk: GridChunk): void {
@@ -171,12 +163,14 @@ export class GridRenderer {
     return this.container;
   }
 
-  getDebugContainer(): ParticleContainer {
+  getDebugContainer(): Container {
     return this.debugContainer;
   }
 
   destroy(): void {
     this.cellParticles.clear();
+    this.debugParticles.clear();
+    this.debugContainer.destroy({ children: true });
     this.container.destroy({ children: true });
   }
 }

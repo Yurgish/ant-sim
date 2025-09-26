@@ -55,7 +55,6 @@ export class Ant {
     this.movement.updatePosition(this.sprite, deltaTime);
     this.renderer.updateRotation(this.movement.getRotation());
 
-    //this.movement.handleEdgeCollisions(width, height);
     this.movement.handleSpriteEdgeCollisions(this.sprite, width, height);
 
     this.sensors.drawSensors();
@@ -67,17 +66,21 @@ export class Ant {
       y: this.sprite.y + this.movement.velocity.y * COLLISION_PREDICTION_DISTANCE,
     };
 
+    if (isNaN(futurePosition.x) || isNaN(futurePosition.y)) {
+      console.warn("NaN detected in futurePosition, resetting velocity");
+      this.movement.velocity = VectorUtils.fromAngle(AngleUtils.random()); // Reset to random direction
+      return;
+    }
+
     const { row, col } = grid.pixelsToGrid(futurePosition.x, futurePosition.y);
     const cell = grid.getCellByRowCol(row, col);
     if (!cell) return;
 
-    // Food interaction
     if (cell.food > 0 && this.state === "searching") {
       this.carryingFood = true;
       this.state = "returning";
       this.renderer.updateTexture(this.carryingFood);
 
-      // Update cell food using setCellProperties
       grid.setCellProperties(row, col, { food: Math.max(0, cell.food - 1) });
 
       this.pheromones.resetWanderingTimer();

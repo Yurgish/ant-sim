@@ -39,7 +39,5 @@ export class GridChunk extends BaseChunk {
 
   update(): void {
     if (!this.dirty) return;
-
-    this.clearDirty();
   }
 }

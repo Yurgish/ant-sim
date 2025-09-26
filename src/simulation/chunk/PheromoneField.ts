@@ -33,13 +33,13 @@ export class PheromoneField extends BaseGrid<PheromoneChunk> {
     this.addStrength(row, col, typeId, strength);
   }
 
-  update(delta: number): void {
+  update(deltaTime: number): void {
     const chunksToUpdate = Array.from(this.dirtyChunks);
 
     this.dirtyChunks.clear();
 
     for (const chunk of chunksToUpdate) {
-      chunk.update(delta);
+      chunk.update(deltaTime);
 
       if (chunk.dirty) {
         this.dirtyChunks.add(chunk);
