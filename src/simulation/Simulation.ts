@@ -7,6 +7,7 @@ import { Grid } from "./chunk/Grid";
 import { PheromoneField } from "./chunk/PheromoneField";
 import { Colony } from "./Colony";
 import { DEBUG_ENABLED, RENDER_PRESETS } from "./constants/constants";
+import { NEST_RADIUS } from "./constants/grid";
 import { GridRenderer } from "./renderers/GridRenderer";
 import { PheromoneRenderer } from "./renderers/PheromoneRenderer";
 
@@ -60,7 +61,7 @@ export class Simulation {
 
     const CHUNK_SIZE = 16;
     const grid = new Grid(width, height, cellSize, CHUNK_SIZE);
-    const pheromoneField = new PheromoneField(width, height, cellSize * 1.5, CHUNK_SIZE / 2);
+    const pheromoneField = new PheromoneField(width, height, cellSize * 1.25, CHUNK_SIZE / 2);
 
     const pheromoneRenderer = new PheromoneRenderer(pheromoneField);
     const gridRenderer = new GridRenderer(grid);
@@ -81,7 +82,7 @@ export class Simulation {
     const { row: nestRow, col: nestCol } = grid.pixelsToGrid(nestX, nestY);
 
     console.log(`Creating initial nest at (${nestRow}, ${nestCol})`);
-    grid.setCellTypeInRadius(nestRow, nestCol, 3, "nest");
+    grid.setCellTypeInRadius(nestRow, nestCol, NEST_RADIUS, "nest");
     colony.setNestPosition(nestX, nestY);
 
     colony.setAntCount(100);
@@ -223,7 +224,7 @@ export class Simulation {
 
   moveNest(x: number, y: number) {
     const { row, col } = this.grid.pixelsToGrid(x, y);
-    const nestRadius = 3;
+    const nestRadius = NEST_RADIUS;
 
     this.grid.setCellTypeInRadius(row, col, nestRadius, "nest");
     this.colony.setNestPosition(x, y);

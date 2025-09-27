@@ -69,7 +69,7 @@ export class Colony {
     this.container.addChild(ant.sprite);
     this.collisionManager.addAnt(ant);
 
-    if (this.ants.length < VISIBLE_SENSORS && true) {
+    if (this.ants.length < VISIBLE_SENSORS && DEBUG_ENABLED) {
       ant.enableDebug();
       const sensorGraphics = ant.getSensorGraphics();
       if (sensorGraphics) {
@@ -114,15 +114,16 @@ export class Colony {
     this.grid = grid;
     this.pheromoneField = pheromoneField;
 
-    // Оновлюємо мурах
     for (const ant of this.ants) {
-      ant.step(this.gridWidth, this.gridHeight, deltaTime);
+      ant.step(deltaTime, this.nestPosition || undefined);
     }
 
-    // Рідше обробляємо колізії (кожні 2-3 кадри)
     this.collisionTimer += deltaTime;
     if (this.collisionTimer >= ANT_COLLISION_UPDATE_INTERVAL) {
-      this.collisionManager.handleCollisions(this.ants, deltaTime);
+      const visibleAnts = this.ants.filter((ant) => ant.isVisible);
+      if (visibleAnts.length > 0) {
+        this.collisionManager.handleCollisions(visibleAnts, deltaTime);
+      }
       this.collisionTimer = 0;
     }
   }

@@ -7,7 +7,7 @@ export type Vector2D = {
 
 export type CellType = "nest" | "food" | "obstacle" | "empty";
 
-export type AntState = "searching" | "returning";
+export type AntState = "searching" | "returning" | "resting";
 
 export type PheromoneType = "food" | "home";
 

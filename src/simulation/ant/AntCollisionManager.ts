@@ -141,7 +141,7 @@ export class AntCollisionManager {
       ant2.sprite.x += separationX;
       ant2.sprite.y += separationY;
 
-      const impulseStrength = 0.5 * deltaTime * 60;
+      const impulseStrength = 0.1 * deltaTime * 60;
 
       ant1.velocity.x -= nx * impulseStrength;
       ant1.velocity.y -= ny * impulseStrength;

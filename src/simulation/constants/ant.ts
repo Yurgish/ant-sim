@@ -22,3 +22,7 @@ export const ANT_SIZE_IN_CELLS = 3;
 export const ANT_COLLISION_RADIUS = 1.0;
 
 export const ANT_COLLISION_UPDATE_INTERVAL = 1 / 30;
+
+// NEST INTERACTION
+export const ANT_REST_TIME_MIN = 3.0;
+export const ANT_REST_TIME_MAX = 8.0;

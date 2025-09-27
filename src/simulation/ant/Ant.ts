@@ -4,8 +4,11 @@ import {
   ANT_MASS_BASE,
   ANT_MASS_CARRYING,
   ANT_MAX_SPEED,
+  ANT_REST_TIME_MAX,
+  ANT_REST_TIME_MIN,
   COLLISION_PREDICTION_DISTANCE,
 } from "@simulation/constants/ant";
+import { NEST_RADIUS } from "@simulation/constants/grid";
 import type { AntState, Vector2D } from "@simulation/types";
 import { AngleUtils, VectorUtils } from "@simulation/utils";
 import { Graphics, Texture } from "pixi.js";
@@ -22,6 +25,10 @@ export class Ant {
 
   radius: number;
   mass: number;
+
+  private restTimer: number = 0;
+  private restDuration: number = 0;
+  private isInNest: boolean = false;
 
   private movement: AntMovement;
   private sensors: LinearAntSensors;
@@ -76,11 +83,15 @@ export class Ant {
     this.sensors.forceUpdate(position, this.movement.velocity, this.grid, this.pheromoneField, this.state);
   }
 
-  step(width: number, height: number, deltaTime: number = 1 / 60): void {
+  step(deltaTime: number = 1 / 60, nestPosition?: Vector2D): void {
+    if (this.state === "resting") {
+      this.handleResting(deltaTime, nestPosition);
+      return;
+    }
+
     const position = this.renderer.getPosition();
     this.sensors.updateSensors(position, this.movement.velocity, this.grid, this.pheromoneField, this.state, deltaTime);
 
-    // Логіка їжі/гнізда (без колізій, бо вони в AntCollisionManager)
     this.checkInteractions();
 
     this.pheromones.update(deltaTime, this.state);
@@ -92,6 +103,54 @@ export class Ant {
     this.movement.updatePosition(this.sprite, deltaTime);
     this.renderer.updateRotation(this.movement.getRotation());
     this.updateMass();
+
+    this.sensors.drawSensors();
+  }
+
+  private handleResting(deltaTime: number, nestPosition?: Vector2D): void {
+    this.restTimer += deltaTime;
+
+    if (this.restTimer >= this.restDuration) {
+      this.exitNest(nestPosition);
+    }
+  }
+
+  private enterNest(): void {
+    this.state = "resting";
+    this.isInNest = true;
+    this.restTimer = 0;
+
+    this.restDuration = ANT_REST_TIME_MIN + Math.random() * (ANT_REST_TIME_MAX - ANT_REST_TIME_MIN);
+
+    this.sprite.visible = false;
+
+    this.movement.velocity = { x: 0, y: 0 };
+
+    this.carryingFood = false;
+    this.renderer.updateTexture(false);
+  }
+
+  private exitNest(nestPosition?: Vector2D): void {
+    this.state = "searching";
+    this.isInNest = false;
+    this.restTimer = 0;
+    this.restDuration = 0;
+
+    this.sprite.visible = true;
+
+    const exitAngle = Math.random() * Math.PI * 2;
+    const exitDirection = VectorUtils.fromAngle(exitAngle);
+
+    if (nestPosition) {
+      this.sprite.x = nestPosition.x + Math.cos(exitAngle) * NEST_RADIUS * 5;
+      this.sprite.y = nestPosition.y + Math.sin(exitAngle) * NEST_RADIUS * 5;
+    }
+
+    this.movement.velocity = VectorUtils.multiply(exitDirection, ANT_MAX_SPEED * 0.5);
+    this.movement.desiredDirection = exitDirection;
+
+    this.pheromones.resetWanderingTimer();
+    this.forceSensorUpdate();
   }
 
   private checkInteractions(): void {
@@ -131,17 +190,25 @@ export class Ant {
     }
 
     if (cell.isNest && this.state === "returning" && this.carryingFood) {
-      this.carryingFood = false;
-      this.state = "searching";
-      this.renderer.updateTexture(this.carryingFood);
-      this.pheromones.resetWanderingTimer();
-      this.movement.reverseDirection();
+      this.enterNest();
       stateChanged = true;
     }
 
     if (stateChanged) {
       this.forceSensorUpdate();
     }
+  }
+
+  get isResting(): boolean {
+    return this.state === "resting";
+  }
+
+  get restTimeRemaining(): number {
+    return Math.max(0, this.restDuration - this.restTimer);
+  }
+
+  get isVisible(): boolean {
+    return this.sprite.visible;
   }
 
   getPosition(): Vector2D {

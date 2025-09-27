@@ -10,4 +10,6 @@ export const GRID_ALPHA = {
   FILLED_CELL: 1.0,
 } as const;
 
-export const MAX_FOOD_PER_CELL = 100;
+export const MAX_FOOD_PER_CELL = 20;
+
+export const NEST_RADIUS = 5;
