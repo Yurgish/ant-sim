@@ -30,7 +30,7 @@ export class PheromoneChunk extends BaseChunk {
     if (!data) return;
 
     const i = this.getIndex(r, c);
-    data[i] += strength;
+    data[i] = strength;
     this.setDirty();
   }
 

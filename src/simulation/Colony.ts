@@ -4,6 +4,8 @@ import type { Vector2D } from "@simulation/types";
 import { Container, Texture } from "pixi.js";
 
 import { Ant } from "./ant/Ant";
+import { AntCollisionManager } from "./ant/AntCollisionManager";
+import { ANT_COLLISION_UPDATE_INTERVAL } from "./constants/ant";
 import { DEBUG_ENABLED, VISIBLE_SENSORS } from "./constants/constants";
 
 export class Colony {
@@ -16,18 +18,37 @@ export class Colony {
   private gridWidth: number;
   private gridHeight: number;
   private cellSize: number;
+
+  grid: Grid;
+  pheromoneField: PheromoneField;
+
   private nestPosition: Vector2D | null = null;
 
-  constructor(antTexture: Texture, antRedTexture: Texture, gridWidth: number, gridHeight: number, cellSize: number) {
+  private collisionManager: AntCollisionManager;
+  private collisionTimer: number = 0;
+
+  constructor(
+    antTexture: Texture,
+    antRedTexture: Texture,
+    gridWidth: number,
+    gridHeight: number,
+    cellSize: number,
+    grid: Grid,
+    pheromoneField: PheromoneField
+  ) {
     this.antTexture = antTexture;
     this.antRedTexture = antRedTexture;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.cellSize = cellSize;
     this.ants = [];
+    this.grid = grid;
+    this.pheromoneField = pheromoneField;
+
+    this.collisionManager = new AntCollisionManager(cellSize, gridWidth, gridHeight, grid);
 
     this.container = new Container();
-    this.debugContainer = new Container(); // Ініціалізуємо дебаг-контейнер
+    this.debugContainer = new Container();
     this.container.addChild(this.debugContainer);
   }
 
@@ -35,9 +56,20 @@ export class Colony {
     const spawnX = this.nestPosition ? this.nestPosition.x : this.gridWidth / 2;
     const spawnY = this.nestPosition ? this.nestPosition.y : this.gridHeight / 2;
 
-    const ant = new Ant(spawnX, spawnY, this.antTexture, this.antRedTexture, this.cellSize);
+    const ant = new Ant(
+      spawnX,
+      spawnY,
+      this.antTexture,
+      this.antRedTexture,
+      this.cellSize,
+      this.grid,
+      this.pheromoneField
+    );
+    this.ants.push(ant);
+    this.container.addChild(ant.sprite);
+    this.collisionManager.addAnt(ant);
 
-    if (this.ants.length < VISIBLE_SENSORS && DEBUG_ENABLED) {
+    if (this.ants.length < VISIBLE_SENSORS && true) {
       ant.enableDebug();
       const sensorGraphics = ant.getSensorGraphics();
       if (sensorGraphics) {
@@ -45,8 +77,6 @@ export class Colony {
       }
     }
 
-    this.ants.push(ant);
-    this.container.addChild(ant.sprite);
     return ant;
   }
 
@@ -54,12 +84,11 @@ export class Colony {
     const index = this.ants.indexOf(ant);
     if (index !== -1) {
       this.container.removeChild(ant.sprite);
-
       const sensorGraphics = ant.getSensorGraphics();
       if (sensorGraphics && this.debugContainer.children.includes(sensorGraphics)) {
         this.debugContainer.removeChild(sensorGraphics);
       }
-
+      this.collisionManager.removeAnt(ant);
       this.ants.splice(index, 1);
     }
   }
@@ -82,8 +111,19 @@ export class Colony {
   }
 
   update(deltaTime: number, grid: Grid, pheromoneField: PheromoneField): void {
+    this.grid = grid;
+    this.pheromoneField = pheromoneField;
+
+    // Оновлюємо мурах
     for (const ant of this.ants) {
-      ant.step(this.gridWidth, this.gridHeight, deltaTime, grid, pheromoneField);
+      ant.step(this.gridWidth, this.gridHeight, deltaTime);
+    }
+
+    // Рідше обробляємо колізії (кожні 2-3 кадри)
+    this.collisionTimer += deltaTime;
+    if (this.collisionTimer >= ANT_COLLISION_UPDATE_INTERVAL) {
+      this.collisionManager.handleCollisions(this.ants, deltaTime);
+      this.collisionTimer = 0;
     }
   }
 
@@ -123,6 +163,7 @@ export class Colony {
   }
 
   destroy(): void {
+    this.ants.forEach((ant) => this.collisionManager.removeAnt(ant));
     this.ants.length = 0;
     this.debugContainer.destroy();
     this.container.destroy();

@@ -82,7 +82,7 @@ export class PheromoneRenderer {
         debugParticle.y = startY;
         debugParticle.width = chunkWidth;
         debugParticle.height = chunkHeight;
-        debugParticle.alpha = 0.1;
+        debugParticle.alpha = 0.01;
         debugParticle.tint = 0x8844ff;
 
         this.debugContainer.addChild(debugParticle);
@@ -102,14 +102,14 @@ export class PheromoneRenderer {
 
       if (DEBUG_ENABLED) {
         for (const particle of this.debugParticles.values()) {
-          particle.alpha = 0.1;
+          particle.alpha = 0.01;
           particle.tint = 0x8844ff;
         }
 
         for (const chunk of chunksToRender) {
           const particle = this.debugParticles.get(chunk);
           if (particle) {
-            particle.alpha = 0.7;
+            particle.alpha = 0.4;
           }
         }
       }

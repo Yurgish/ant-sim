@@ -1,7 +1,7 @@
 import { PHEROMONE_TYPES } from "@simulation/types/PheromoneTypes";
 
 export const PHEROMONE_COLORS_MAP: Record<number, number> = {
-  [PHEROMONE_TYPES.FOOD]: 0xff0000,
+  [PHEROMONE_TYPES.FOOD]: 0x00ff00, // green
   [PHEROMONE_TYPES.HOME]: 0x0000ff,
 };
 

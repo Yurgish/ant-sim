@@ -42,6 +42,7 @@ export class Simulation {
     this.colony = colony;
     this.gridRenderer = gridRenderer;
     this.pheromoneRenderer = pheromoneRenderer;
+
     this.updateFunction = this.simulationLoop.bind(this);
   }
 
@@ -70,7 +71,7 @@ export class Simulation {
     const antTexture: Texture = await Assets.load(antSprite);
     const antRedTexture: Texture = await Assets.load(antRedSprite);
 
-    const colony = new Colony(antTexture, antRedTexture, width, height, cellSize);
+    const colony = new Colony(antTexture, antRedTexture, width, height, cellSize, grid, pheromoneField);
     app.stage.addChild(colony.getContainer());
 
     const simulation = new Simulation(app, grid, pheromoneField, colony, gridRenderer, pheromoneRenderer);

@@ -65,7 +65,7 @@ export class GridRenderer {
         debugParticle.y = startY;
         debugParticle.width = chunkWidth;
         debugParticle.height = chunkHeight;
-        debugParticle.alpha = 0.1;
+        debugParticle.alpha = 0.01;
         debugParticle.tint = 0x4444ff;
 
         this.debugContainer.addChild(debugParticle);
@@ -89,7 +89,7 @@ export class GridRenderer {
             particle.alpha = 0.4;
             particle.tint = 0xff0000;
           } else {
-            particle.alpha = 0.1;
+            particle.alpha = 0.01;
             particle.tint = 0x4444ff;
           }
         }
