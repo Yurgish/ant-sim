@@ -36,7 +36,7 @@ export function Canvas() {
   };
 
   const controls = useControls("Simulation", {
-    antCount: { value: 100, min: 1, max: 2000, step: 1 },
+    antCount: { value: 100, min: 1, max: 5000, step: 1 },
     showAnts: { value: true, label: "Show Ants" },
     showPheromones: { value: false, label: "Show Pheromones" },
     showGrid: { value: true, label: "Show Grid" },

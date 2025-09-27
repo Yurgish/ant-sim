@@ -1,6 +1,6 @@
 import type { PheromoneChunk } from "@simulation/chunk/PheromoneChunk";
 import type { PheromoneField } from "@simulation/chunk/PheromoneField";
-import { DEBUG_ENABLED } from "@simulation/constants/constants";
+import { DEBUG_ENABLED, PHEROMONE_UPDATE_INTERVAL_FRAMES } from "@simulation/constants/constants";
 import {
   MAX_PHEROMONE_THRESHOLD,
   MIN_PHEROMONE_THRESHOLD,
@@ -20,6 +20,10 @@ export class PheromoneRenderer {
   private cellSize: number;
   private chunkVisuals: Map<PheromoneChunk, PheromoneVisuals> = new Map();
   private debugParticles: Map<PheromoneChunk, Sprite> = new Map();
+
+  // Frame-based update optimization
+  private frameCounter: number = 0;
+  private updateInterval: number = PHEROMONE_UPDATE_INTERVAL_FRAMES;
 
   constructor(field: PheromoneField) {
     this.field = field;
@@ -88,24 +92,31 @@ export class PheromoneRenderer {
   }
 
   update(): void {
-    const chunksToRender = Array.from(this.field.dirtyChunks);
+    this.frameCounter++;
 
-    if (DEBUG_ENABLED) {
-      for (const particle of this.debugParticles.values()) {
-        particle.alpha = 0.1;
-        particle.tint = 0x8844ff;
+    // Only update visuals at the specified interval
+    if (this.frameCounter >= this.updateInterval) {
+      this.frameCounter = 0;
+
+      const chunksToRender = Array.from(this.field.dirtyChunks);
+
+      if (DEBUG_ENABLED) {
+        for (const particle of this.debugParticles.values()) {
+          particle.alpha = 0.1;
+          particle.tint = 0x8844ff;
+        }
+
+        for (const chunk of chunksToRender) {
+          const particle = this.debugParticles.get(chunk);
+          if (particle) {
+            particle.alpha = 0.7;
+          }
+        }
       }
 
       for (const chunk of chunksToRender) {
-        const particle = this.debugParticles.get(chunk);
-        if (particle) {
-          particle.alpha = 0.7;
-        }
+        this.updateChunkVisual(chunk);
       }
-    }
-
-    for (const chunk of chunksToRender) {
-      this.updateChunkVisual(chunk);
     }
   }
 
@@ -135,6 +146,17 @@ export class PheromoneRenderer {
     }
   }
 
+  private createParticle(globalCol: number, globalRow: number): Particle {
+    const particle = new Particle(Texture.WHITE);
+    particle.anchorX = 0.5;
+    particle.anchorY = 0.5;
+    particle.scaleX = this.cellSize * PHEROMONE_SIZE;
+    particle.scaleY = this.cellSize * PHEROMONE_SIZE;
+    particle.x = globalCol * this.cellSize + this.cellSize / 2;
+    particle.y = globalRow * this.cellSize + this.cellSize / 2;
+    return particle;
+  }
+
   private processPheromone(
     globalRow: number,
     globalCol: number,
@@ -148,13 +170,7 @@ export class PheromoneRenderer {
 
     if (isVisible) {
       if (!particle) {
-        particle = new Particle(Texture.WHITE);
-        particle.x = globalCol * this.cellSize + this.cellSize / 2;
-        particle.y = globalRow * this.cellSize + this.cellSize / 2;
-        particle.scaleX = this.cellSize * PHEROMONE_SIZE;
-        particle.scaleY = this.cellSize * PHEROMONE_SIZE;
-        particle.anchorX = 0.5;
-        particle.anchorY = 0.5;
+        particle = this.createParticle(globalCol, globalRow);
         this.container.addParticle(particle);
         particlesArray[localIndex] = particle;
       }
@@ -166,6 +182,21 @@ export class PheromoneRenderer {
       this.container.removeParticle(particle);
       particlesArray[localIndex] = null;
     }
+  }
+
+  /**
+   * Set how often the pheromones should update visually
+   * @param frames - Number of frames between updates (1 = every frame, 2 = every 2nd frame, etc.)
+   */
+  setUpdateInterval(frames: number): void {
+    this.updateInterval = Math.max(1, frames);
+  }
+
+  /**
+   * Force immediate visual update regardless of frame counter
+   */
+  forceUpdate(): void {
+    this.frameCounter = this.updateInterval; // Will trigger update on next call
   }
 
   getContainer(): ParticleContainer {

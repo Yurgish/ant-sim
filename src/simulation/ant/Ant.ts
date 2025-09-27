@@ -3,26 +3,27 @@ import type { PheromoneField } from "@simulation/chunk/PheromoneField";
 import { COLLISION_PREDICTION_DISTANCE } from "@simulation/constants/ant";
 import type { AntState } from "@simulation/types";
 import { AngleUtils, VectorUtils } from "@simulation/utils";
-import { Texture } from "pixi.js";
+import { Graphics, Texture } from "pixi.js";
 
 import { AntMovement } from "./AntMovement";
 import { AntPheromones } from "./AntPheromones";
 import { AntRenderer } from "./AntRenderer";
-import { AntSensors } from "./AntSensors";
+// import { AntSensors } from "./AntSensors";
+import { LinearAntSensors } from "./LinearAntSensors";
 
 export class Ant {
   state: AntState = "searching";
   carryingFood: boolean = false;
 
   private movement: AntMovement;
-  private sensors: AntSensors;
+  private sensors: LinearAntSensors;
   private pheromones: AntPheromones;
   private renderer: AntRenderer;
 
   constructor(x: number, y: number, normalTexture: Texture, carryingTexture: Texture, cellSize: number) {
     const randomDirection = VectorUtils.fromAngle(AngleUtils.random());
     this.movement = new AntMovement(randomDirection);
-    this.sensors = new AntSensors(cellSize);
+    this.sensors = new LinearAntSensors(cellSize);
     this.pheromones = new AntPheromones();
     this.renderer = new AntRenderer(x, y, normalTexture, carryingTexture, cellSize);
 
@@ -37,12 +38,24 @@ export class Ant {
     this.sensors.enableDebug();
   }
 
+  getSensorGraphics(): Graphics | undefined {
+    return this.sensors.getDebugGraphics();
+  }
+
+  /**
+   * Force immediate sensor update (useful in critical situations)
+   */
+  forceSensorUpdate(grid: Grid, pheromoneField: PheromoneField): void {
+    const position = this.renderer.getPosition();
+    this.sensors.forceUpdate(position, this.movement.velocity, grid, pheromoneField, this.state);
+  }
+
   step(width: number, height: number, deltaTime: number = 1 / 60, grid?: Grid, pheromoneField?: PheromoneField): void {
     if (grid && pheromoneField) {
       const position = this.renderer.getPosition();
-      this.sensors.updateSensors(position, this.movement.velocity, grid, pheromoneField, this.state);
+      this.sensors.updateSensors(position, this.movement.velocity, grid, pheromoneField, this.state, deltaTime);
 
-      this.checkCollisions(grid);
+      this.checkCollisions(grid, pheromoneField);
 
       this.pheromones.update(deltaTime, this.state);
       if (this.pheromones.shouldDropPheromone()) {
@@ -60,7 +73,7 @@ export class Ant {
     this.sensors.drawSensors();
   }
 
-  private checkCollisions(grid: Grid): void {
+  private checkCollisions(grid: Grid, pheromoneField: PheromoneField): void {
     const futurePosition = {
       x: this.sprite.x + this.movement.velocity.x * COLLISION_PREDICTION_DISTANCE,
       y: this.sprite.y + this.movement.velocity.y * COLLISION_PREDICTION_DISTANCE,
@@ -76,6 +89,8 @@ export class Ant {
     const cell = grid.getCellByRowCol(row, col);
     if (!cell) return;
 
+    let stateChanged = false;
+
     if (cell.food > 0 && this.state === "searching") {
       this.carryingFood = true;
       this.state = "returning";
@@ -85,6 +100,7 @@ export class Ant {
 
       this.pheromones.resetWanderingTimer();
       this.movement.reverseDirection();
+      stateChanged = true;
     }
 
     if (cell.food > 0 && this.state === "returning") {
@@ -102,6 +118,13 @@ export class Ant {
 
       this.pheromones.resetWanderingTimer();
       this.movement.reverseDirection();
+      stateChanged = true;
+    }
+
+    // Force sensor update when state changes for more responsive behavior
+    if (stateChanged) {
+      const position = this.renderer.getPosition();
+      this.sensors.forceUpdate(position, this.movement.velocity, grid, pheromoneField, this.state);
     }
   }
 }

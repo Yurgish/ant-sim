@@ -6,7 +6,7 @@ import antRedSprite from "/ant-red.png";
 import { Grid } from "./chunk/Grid";
 import { PheromoneField } from "./chunk/PheromoneField";
 import { Colony } from "./Colony";
-import { DEBUG_ENABLED } from "./constants/constants";
+import { DEBUG_ENABLED, RENDER_PRESETS } from "./constants/constants";
 import { GridRenderer } from "./renderers/GridRenderer";
 import { PheromoneRenderer } from "./renderers/PheromoneRenderer";
 
@@ -42,7 +42,7 @@ export class Simulation {
     this.colony = colony;
     this.gridRenderer = gridRenderer;
     this.pheromoneRenderer = pheromoneRenderer;
-    this.updateFunction = this.update.bind(this);
+    this.updateFunction = this.simulationLoop.bind(this);
   }
 
   static async init(container: HTMLElement, width: number, height: number, cellSize: number): Promise<Simulation> {
@@ -55,11 +55,11 @@ export class Simulation {
 
     const app = new Application();
 
-    await app.init({ canvas: canvas, width, height, backgroundColor: 0xffffff });
+    await app.init({ canvas: canvas, width, height, backgroundColor: 0xffffff, preference: "webgl" });
 
     const CHUNK_SIZE = 16;
     const grid = new Grid(width, height, cellSize, CHUNK_SIZE);
-    const pheromoneField = new PheromoneField(width, height, cellSize, CHUNK_SIZE / 2);
+    const pheromoneField = new PheromoneField(width, height, cellSize * 1.5, CHUNK_SIZE / 2);
 
     const pheromoneRenderer = new PheromoneRenderer(pheromoneField);
     const gridRenderer = new GridRenderer(grid);
@@ -85,6 +85,8 @@ export class Simulation {
 
     colony.setAntCount(100);
 
+    simulation.setOptimalRenderIntervals();
+
     simulation.setupMouseEvents();
 
     app.ticker.add(simulation.updateFunction);
@@ -97,7 +99,7 @@ export class Simulation {
     return simulation;
   }
 
-  private update = (ticker: { deltaTime: number }): void => {
+  private simulationLoop = (ticker: { deltaTime: number }): void => {
     const deltaTime = ticker.deltaTime / 60;
 
     if (!this.isPaused) {
@@ -150,6 +152,48 @@ export class Simulation {
 
   setAntCount(count: number) {
     this.colony.setAntCount(count);
+  }
+
+  /**
+   * Set how often the grid renderer should update visually
+   * @param frames - Number of frames between updates (1 = every frame, 2 = every 2nd frame, etc.)
+   */
+  setGridRenderInterval(frames: number) {
+    this.gridRenderer.setUpdateInterval(frames);
+  }
+
+  /**
+   * Set how often the pheromone renderer should update visually
+   * @param frames - Number of frames between updates (1 = every frame, 2 = every 2nd frame, etc.)
+   */
+  setPheromoneRenderInterval(frames: number) {
+    this.pheromoneRenderer.setUpdateInterval(frames);
+  }
+
+  /**
+   * Set render intervals for optimal performance
+   */
+  setOptimalRenderIntervals() {
+    this.setGridRenderInterval(2); // Update grid every 2 frames
+    this.setPheromoneRenderInterval(2); // Update pheromones every 2 frames
+  }
+
+  /**
+   * Force immediate update of all renderers
+   */
+  forceRenderUpdate() {
+    this.gridRenderer.forceUpdate();
+    this.pheromoneRenderer.forceUpdate();
+  }
+
+  /**
+   * Apply a performance preset for rendering intervals
+   * @param preset - The performance preset to apply
+   */
+  setRenderPreset(preset: keyof typeof RENDER_PRESETS) {
+    const settings = RENDER_PRESETS[preset];
+    this.setGridRenderInterval(settings.grid);
+    this.setPheromoneRenderInterval(settings.pheromones);
   }
 
   private drawAtPosition(x: number, y: number) {
@@ -209,7 +253,7 @@ export class Simulation {
 
   destroy(): void {
     // Stop ticker
-    this.app.ticker.remove(this.update, this);
+    this.app.ticker.remove(this.simulationLoop, this);
 
     // Destroy input
     // if (this.inputManager) this.inputManager.destroy();

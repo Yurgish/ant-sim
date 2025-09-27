@@ -5,7 +5,7 @@ export const PHEROMONE_COLORS_MAP: Record<number, number> = {
   [PHEROMONE_TYPES.HOME]: 0x0000ff,
 };
 
-export const PHEROMONE_EVAPORATION_RATE = 0.995;
+export const PHEROMONE_EVAPORATION_RATE = 0.998;
 
 export const MAX_PHEROMONE_THRESHOLD = 10; // Maximum pheromone level in cell
 export const MIN_PHEROMONE_THRESHOLD = 0.1; // Minimum pheromone level to be considered present

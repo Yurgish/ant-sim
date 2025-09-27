@@ -1,8 +1,10 @@
 // SENSORS
 // Sensor parameters (in cells)
-export const SENSOR_DISTANCE_CELLS = 5; // Sensor distance in cells (was too far)
-export const SENSOR_ANGLE = Math.PI / 3;
+export const SENSOR_ANGLE = Math.PI / 4;
 export const SENSOR_RADIUS_CELLS = 6; // Sensor radius for pheromone detection in cells (smaller radius)
+
+export const LINEAR_SENSOR_POINTS = 8; // Кількість точок на лінії (менше = швидше)
+export const LINEAR_SENSOR_STEP = 2; // Крок між точками в клітинках
 
 // MOVEMENT
 export const ANT_MAX_SPEED = 1.2; // Slightly reduce speed

@@ -8,6 +8,7 @@ import { DEBUG_ENABLED, VISIBLE_SENSORS } from "./constants/constants";
 
 export class Colony {
   private container: Container;
+  private debugContainer: Container;
   ants: Ant[];
 
   private antTexture: Texture;
@@ -26,6 +27,8 @@ export class Colony {
     this.ants = [];
 
     this.container = new Container();
+    this.debugContainer = new Container(); // Ініціалізуємо дебаг-контейнер
+    this.container.addChild(this.debugContainer);
   }
 
   addAnt(): Ant {
@@ -34,9 +37,12 @@ export class Colony {
 
     const ant = new Ant(spawnX, spawnY, this.antTexture, this.antRedTexture, this.cellSize);
 
-    // Enable debug for first ant if DEBUG_ENABLED
     if (this.ants.length < VISIBLE_SENSORS && DEBUG_ENABLED) {
       ant.enableDebug();
+      const sensorGraphics = ant.getSensorGraphics();
+      if (sensorGraphics) {
+        this.debugContainer.addChild(sensorGraphics);
+      }
     }
 
     this.ants.push(ant);
@@ -48,6 +54,12 @@ export class Colony {
     const index = this.ants.indexOf(ant);
     if (index !== -1) {
       this.container.removeChild(ant.sprite);
+
+      const sensorGraphics = ant.getSensorGraphics();
+      if (sensorGraphics && this.debugContainer.children.includes(sensorGraphics)) {
+        this.debugContainer.removeChild(sensorGraphics);
+      }
+
       this.ants.splice(index, 1);
     }
   }
@@ -112,6 +124,7 @@ export class Colony {
 
   destroy(): void {
     this.ants.length = 0;
+    this.debugContainer.destroy();
     this.container.destroy();
   }
 }

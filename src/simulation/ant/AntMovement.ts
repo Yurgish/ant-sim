@@ -7,7 +7,8 @@ import {
 import type { Vector2D } from "@simulation/types";
 import { VectorUtils } from "@simulation/utils";
 
-import type { AntSensors } from "./AntSensors";
+//import type { AntSensors } from "./AntSensors";
+import type { LinearAntSensors } from "./LinearAntSensors";
 
 export class AntMovement {
   velocity: Vector2D;
@@ -22,13 +23,13 @@ export class AntMovement {
     this.desiredDirection = { ...initialDirection };
   }
 
-  update(sensors: AntSensors, deltaTime: number): void {
+  update(sensors: LinearAntSensors, deltaTime: number): void {
     this.handlePheromoneSteering(sensors);
     this.addWanderingIfNeeded(sensors);
     this.applyMovement(deltaTime);
   }
 
-  private handlePheromoneSteering(sensors: AntSensors): void {
+  private handlePheromoneSteering(sensors: LinearAntSensors): void {
     const hasObstacles = sensors.hasObstacles();
 
     let newDir: Vector2D;
@@ -48,7 +49,7 @@ export class AntMovement {
     });
   }
 
-  private calculateObstacleAvoidance(sensors: AntSensors): Vector2D {
+  private calculateObstacleAvoidance(sensors: LinearAntSensors): Vector2D {
     let escapeDir = VectorUtils.normalize(this.velocity);
 
     if (sensors.leftSensor.value === -Infinity && sensors.rightSensor.value === -Infinity) {
@@ -65,7 +66,7 @@ export class AntMovement {
     return escapeDir;
   }
 
-  private calculateNavigationDirection(sensors: AntSensors): Vector2D {
+  private calculateNavigationDirection(sensors: LinearAntSensors): Vector2D {
     const forward = VectorUtils.normalize(this.velocity);
     const leftDir = VectorUtils.fromAngle(VectorUtils.angle(this.velocity) - sensors.sensorAngle);
     const rightDir = VectorUtils.fromAngle(VectorUtils.angle(this.velocity) + sensors.sensorAngle);
@@ -96,7 +97,7 @@ export class AntMovement {
     }
   }
 
-  private addWanderingIfNeeded(sensors: AntSensors): void {
+  private addWanderingIfNeeded(sensors: LinearAntSensors): void {
     const maxValue = Math.max(sensors.leftSensor.value, sensors.centreSensor.value, sensors.rightSensor.value);
     if (maxValue < 4) {
       const minWanderMult = 0.1;

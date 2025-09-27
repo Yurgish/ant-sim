@@ -1,6 +1,6 @@
 import type { Grid } from "@simulation/chunk/Grid";
 import type { GridCell, GridChunk } from "@simulation/chunk/GridChunk";
-import { DEBUG_ENABLED } from "@simulation/constants/constants";
+import { DEBUG_ENABLED, GRID_UPDATE_INTERVAL_FRAMES } from "@simulation/constants/constants";
 import { GRID_ALPHA, GRID_COLORS, MAX_FOOD_PER_CELL } from "@simulation/constants/grid";
 import { Container, Particle, ParticleContainer, Sprite, Texture } from "pixi.js";
 
@@ -13,6 +13,10 @@ export class GridRenderer {
   private grid: Grid;
   private cellParticles: CellParticleMap = new Map();
   private debugParticles: Map<GridChunk, Sprite> = new Map();
+
+  // Frame-based update optimization
+  private frameCounter: number = 0;
+  private updateInterval: number = GRID_UPDATE_INTERVAL_FRAMES;
 
   constructor(grid: Grid) {
     this.grid = grid;
@@ -71,25 +75,32 @@ export class GridRenderer {
   }
 
   update(): void {
-    const chunksToRender = Array.from(this.grid.dirtyChunks);
+    this.frameCounter++;
 
-    if (DEBUG_ENABLED) {
-      for (const [chunk, particle] of this.debugParticles.entries()) {
-        if (chunksToRender.includes(chunk)) {
-          particle.alpha = 0.4;
-          particle.tint = 0xff0000;
-        } else {
-          particle.alpha = 0.1;
-          particle.tint = 0x4444ff;
+    // Only update visuals at the specified interval
+    if (this.frameCounter >= this.updateInterval) {
+      this.frameCounter = 0;
+
+      const chunksToRender = Array.from(this.grid.dirtyChunks);
+
+      if (DEBUG_ENABLED) {
+        for (const [chunk, particle] of this.debugParticles.entries()) {
+          if (chunksToRender.includes(chunk)) {
+            particle.alpha = 0.4;
+            particle.tint = 0xff0000;
+          } else {
+            particle.alpha = 0.1;
+            particle.tint = 0x4444ff;
+          }
         }
       }
-    }
 
-    for (const chunk of chunksToRender) {
-      this.updateChunkVisual(chunk);
-      chunk.clearDirty();
+      for (const chunk of chunksToRender) {
+        this.updateChunkVisual(chunk);
+        chunk.clearDirty();
+      }
+      this.grid.dirtyChunks.clear();
     }
-    this.grid.dirtyChunks.clear();
   }
 
   private updateChunkVisual(chunk: GridChunk): void {
@@ -157,6 +168,21 @@ export class GridRenderer {
       this.container.removeParticle(particle);
       particlesArray[localIndex] = null;
     }
+  }
+
+  /**
+   * Set how often the grid should update visually
+   * @param frames - Number of frames between updates (1 = every frame, 2 = every 2nd frame, etc.)
+   */
+  setUpdateInterval(frames: number): void {
+    this.updateInterval = Math.max(1, frames);
+  }
+
+  /**
+   * Force immediate visual update regardless of frame counter
+   */
+  forceUpdate(): void {
+    this.frameCounter = this.updateInterval; // Will trigger update on next call
   }
 
   getContainer(): ParticleContainer {
