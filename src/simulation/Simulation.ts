@@ -1,20 +1,19 @@
 import { Application, Assets, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
-import antRedSprite from "/ant-red.png";
+import antCarryingFood from "/carrying-food-ant.png";
 
 import { Grid } from "./chunk/Grid";
 import { PheromoneField } from "./chunk/PheromoneField";
-import { Colony } from "./Colony";
+import { ColonyManager } from "./colony/ColonyManager";
 import { DEBUG_ENABLED, RENDER_PRESETS } from "./constants/constants";
-import { NEST_RADIUS } from "./constants/grid";
 import { GridRenderer } from "./renderers/GridRenderer";
 import { PheromoneRenderer } from "./renderers/PheromoneRenderer";
 
 export class Simulation {
   app: Application;
   grid: Grid;
-  colony: Colony;
+  colony: ColonyManager;
   pheromoneField: PheromoneField;
 
   gridRenderer: GridRenderer;
@@ -22,7 +21,7 @@ export class Simulation {
 
   private updateFunction: (ticker: { deltaTime: number }) => void;
 
-  public currentBrushType: "nest" | "food" | "obstacle" | "empty" = "food";
+  public currentBrushType: "nest" | "food" | "obstacle" | "empty" | "move-nest" | "add-entrance" = "food";
   public brushSize: number = 20;
   private isDrawing: boolean = false;
   private isPaused: boolean = false;
@@ -33,7 +32,7 @@ export class Simulation {
     app: Application,
     grid: Grid,
     pheromoneField: PheromoneField,
-    colony: Colony,
+    colony: ColonyManager,
     gridRenderer: GridRenderer,
     pheromoneRenderer: PheromoneRenderer
   ) {
@@ -70,22 +69,21 @@ export class Simulation {
     app.stage.addChild(pheromoneRenderer.getContainer());
 
     const antTexture: Texture = await Assets.load(antSprite);
-    const antRedTexture: Texture = await Assets.load(antRedSprite);
+    const antCarryingFoodTexture: Texture = await Assets.load(antCarryingFood);
 
-    const colony = new Colony(antTexture, antRedTexture, width, height, cellSize, grid, pheromoneField);
+    const nestX = width / 2;
+    const nestY = height / 2;
+    const colony = new ColonyManager({ x: nestX, y: nestY }, 100);
+
+    colony.initialize(cellSize, width, height, grid, pheromoneField, {
+      normal: antTexture,
+      carrying: antCarryingFoodTexture,
+    });
     app.stage.addChild(colony.getContainer());
 
     const simulation = new Simulation(app, grid, pheromoneField, colony, gridRenderer, pheromoneRenderer);
 
-    const nestX = width / 2;
-    const nestY = height / 2;
-    const { row: nestRow, col: nestCol } = grid.pixelsToGrid(nestX, nestY);
-
-    console.log(`Creating initial nest at (${nestRow}, ${nestCol})`);
-    grid.setCellTypeInRadius(nestRow, nestCol, NEST_RADIUS, "nest");
-    colony.setNestPosition(nestX, nestY);
-
-    colony.setAntCount(100);
+    console.log(`Creating initial nest at (${nestX}, ${nestY})`);
 
     simulation.setOptimalRenderIntervals();
 
@@ -97,6 +95,16 @@ export class Simulation {
       app.stage.addChild(pheromoneRenderer.getDebugContainer());
       app.stage.addChild(gridRenderer.getDebugContainer());
     }
+
+    setInterval(() => {
+      const stats = colony.getStats();
+      const nestStats = colony.getNest().getStats();
+      console.log(`📊 Статистика: Мурах: ${stats.totalAnts} (активні: ${stats.activeAnts}), 
+        Їжі зібрано: ${stats.foodStored}, 
+        Ефективність: ${stats.efficiency.toFixed(2)}, 
+        Ріст: ${(stats.growthRate * 100).toFixed(1)}%,
+        Входів в гніздо: ${nestStats.totalEntrances}, Мурах всередині: ${nestStats.antsInside}`);
+    }, 5000);
 
     return simulation;
   }
@@ -117,12 +125,13 @@ export class Simulation {
   };
 
   setupMouseEvents() {
-    this.app.canvas.style.cursor = "crosshair";
+    this.setBrushType(this.currentBrushType);
 
     this.app.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
     this.app.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.app.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
     this.app.canvas.addEventListener("mouseleave", this.onMouseUp.bind(this));
+    this.app.canvas.addEventListener("contextmenu", this.onRightClick.bind(this));
 
     document.addEventListener("mouseup", this.onMouseUp.bind(this));
     document.addEventListener("mouseleave", this.onMouseUp.bind(this));
@@ -150,6 +159,40 @@ export class Simulation {
 
     this.drawingPaused = false;
     this.updatePauseState();
+  }
+
+  //remake
+  private onRightClick(event: MouseEvent) {
+    event.preventDefault();
+
+    if (this.currentBrushType === "add-entrance") {
+      const entrances = this.colony.getNest().getAllEntrances();
+      if (entrances.length > 1) {
+        const clickPos = { x: event.offsetX, y: event.offsetY };
+        let closestEntrance = null;
+        let minDistance = Infinity;
+
+        for (const entrance of entrances) {
+          if (entrance.isMain && entrances.length === 1) continue;
+
+          const distance = Math.sqrt(
+            Math.pow(clickPos.x - entrance.position.x, 2) + Math.pow(clickPos.y - entrance.position.y, 2)
+          );
+
+          if (distance < minDistance && distance < entrance.radius) {
+            minDistance = distance;
+            closestEntrance = entrance;
+          }
+        }
+
+        if (closestEntrance) {
+          const success = this.colony.removeNestEntrance(closestEntrance.id);
+          if (success) {
+            console.log(`🗑️ Видалено вхід: ${closestEntrance.id}`);
+          }
+        }
+      }
+    }
   }
 
   setAntCount(count: number) {
@@ -199,8 +242,10 @@ export class Simulation {
   }
 
   private drawAtPosition(x: number, y: number) {
-    if (this.currentBrushType === "nest") {
+    if (this.currentBrushType === "nest" || this.currentBrushType === "move-nest") {
       this.moveNest(x, y);
+    } else if (this.currentBrushType === "add-entrance") {
+      this.addNestEntrance(x, y);
     } else {
       const { row, col } = this.grid.pixelsToGrid(x, y);
       const radiusCells = this.brushSize / this.grid.cellSize;
@@ -214,8 +259,17 @@ export class Simulation {
     }
   }
 
-  setBrushType(type: "nest" | "food" | "obstacle" | "empty") {
+  setBrushType(type: "nest" | "food" | "obstacle" | "empty" | "move-nest" | "add-entrance") {
     this.currentBrushType = type;
+
+    // Змінюємо курсор в залежності від режиму
+    if (type === "move-nest") {
+      this.app.canvas.style.cursor = "move";
+    } else if (type === "add-entrance") {
+      this.app.canvas.style.cursor = "copy";
+    } else {
+      this.app.canvas.style.cursor = "crosshair";
+    }
   }
 
   setBrushSize(size: number) {
@@ -223,11 +277,13 @@ export class Simulation {
   }
 
   moveNest(x: number, y: number) {
-    const { row, col } = this.grid.pixelsToGrid(x, y);
-    const nestRadius = NEST_RADIUS;
-
-    this.grid.setCellTypeInRadius(row, col, nestRadius, "nest");
     this.colony.setNestPosition(x, y);
+    console.log(`🏠 Переміщено головний вхід в (${x.toFixed(0)}, ${y.toFixed(0)})`);
+  }
+
+  addNestEntrance(x: number, y: number) {
+    const entranceId = this.colony.addNestEntrance({ x, y });
+    console.log(`➕ Додано новий вхід в (${x.toFixed(0)}, ${y.toFixed(0)}): ${entranceId}`);
   }
 
   private updatePauseState() {

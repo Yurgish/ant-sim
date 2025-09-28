@@ -8,7 +8,6 @@ import {
   ANT_REST_TIME_MIN,
   COLLISION_PREDICTION_DISTANCE,
 } from "@simulation/constants/ant";
-import { NEST_RADIUS } from "@simulation/constants/grid";
 import type { AntState, Vector2D } from "@simulation/types";
 import { AngleUtils, VectorUtils } from "@simulation/utils";
 import { Graphics, Texture } from "pixi.js";
@@ -38,6 +37,10 @@ export class Ant {
   grid: Grid;
   pheromoneField: PheromoneField;
 
+  private onFoodDelivered?: (antId: number) => void;
+  private onEnterNest?: (antId: number, duration: number) => void;
+  private onExitNest?: (antId: number) => void;
+
   constructor(
     x: number,
     y: number,
@@ -45,7 +48,10 @@ export class Ant {
     carryingTexture: Texture,
     cellSize: number,
     grid: Grid,
-    pheromoneField: PheromoneField
+    pheromoneField: PheromoneField,
+    onFoodDelivered?: (antId: number) => void,
+    onEnterNest?: (antId: number, duration: number) => void,
+    onExitNest?: (antId: number) => void
   ) {
     this.id = Math.floor(Math.random() * 1e9);
     const randomDirection = VectorUtils.fromAngle(AngleUtils.random());
@@ -59,6 +65,10 @@ export class Ant {
 
     this.grid = grid;
     this.pheromoneField = pheromoneField;
+
+    this.onFoodDelivered = onFoodDelivered;
+    this.onEnterNest = onEnterNest;
+    this.onExitNest = onExitNest;
 
     this.renderer.updateTexture(this.carryingFood);
   }
@@ -75,9 +85,6 @@ export class Ant {
     return this.sensors.getDebugGraphics();
   }
 
-  /**
-   * Force immediate sensor update (useful in critical situations)
-   */
   forceSensorUpdate(): void {
     const position = this.renderer.getPosition();
     this.sensors.forceUpdate(position, this.movement.velocity, this.grid, this.pheromoneField, this.state);
@@ -123,14 +130,22 @@ export class Ant {
     this.restDuration = ANT_REST_TIME_MIN + Math.random() * (ANT_REST_TIME_MAX - ANT_REST_TIME_MIN);
 
     this.sprite.visible = false;
-
     this.movement.velocity = { x: 0, y: 0 };
+
+    if (this.carryingFood && this.onFoodDelivered) {
+      this.onFoodDelivered(this.id);
+    }
 
     this.carryingFood = false;
     this.renderer.updateTexture(false);
+
+    if (this.onEnterNest) {
+      this.onEnterNest(this.id, this.restDuration);
+    }
   }
 
-  private exitNest(nestPosition?: Vector2D): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private exitNest(_nestPosition?: Vector2D): void {
     this.state = "searching";
     this.isInNest = false;
     this.restTimer = 0;
@@ -138,13 +153,16 @@ export class Ant {
 
     this.sprite.visible = true;
 
+    // Отримуємо правильну позицію виходу через колбек onExitNest
+    // який повертає позицію з урахуванням вибраного входу
+    if (this.onExitNest) {
+      this.onExitNest(this.id);
+    }
+
+    // Після виклику onExitNest, позиція мурахи вже встановлена правильно
+    // Тепер просто задаємо напрямок руху
     const exitAngle = Math.random() * Math.PI * 2;
     const exitDirection = VectorUtils.fromAngle(exitAngle);
-
-    if (nestPosition) {
-      this.sprite.x = nestPosition.x + Math.cos(exitAngle) * NEST_RADIUS * 5;
-      this.sprite.y = nestPosition.y + Math.sin(exitAngle) * NEST_RADIUS * 5;
-    }
 
     this.movement.velocity = VectorUtils.multiply(exitDirection, ANT_MAX_SPEED * 0.5);
     this.movement.desiredDirection = exitDirection;
@@ -185,11 +203,13 @@ export class Ant {
       this.pheromones.resetWanderingTimer();
     }
 
+    // Перевірка гнізда (використовуємо поточну позицію)
     if (cell.isNest && this.state === "searching") {
       this.pheromones.resetWanderingTimer();
     }
 
     if (cell.isNest && this.state === "returning" && this.carryingFood) {
+      // Мурахи входять в гніздо, коли поточна позиція на nest клітинці
       this.enterNest();
       stateChanged = true;
     }
@@ -245,6 +265,6 @@ export class Ant {
 
   private updateMass(): void {
     this.mass = this.carryingFood ? ANT_MASS_CARRYING : ANT_MASS_BASE;
-    this.movement.maxSpeed = ANT_MAX_SPEED / this.mass; // Повільніше з їжею
+    this.movement.maxSpeed = ANT_MAX_SPEED / this.mass;
   }
 }

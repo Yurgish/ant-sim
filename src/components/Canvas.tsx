@@ -42,7 +42,7 @@ export function Canvas() {
     showGrid: { value: true, label: "Show Grid" },
     brushType: {
       value: "food",
-      options: ["nest", "food", "obstacle", "empty"],
+      options: ["nest", "food", "obstacle", "empty", "move-nest", "add-entrance"],
       label: "Brush Type",
     },
     brushSize: { value: 20, min: 5, max: 100, step: 5, label: "Brush Size" },
@@ -91,7 +91,7 @@ export function Canvas() {
 
   useEffect(() => {
     if (isSimulationReady && simulationRef.current) {
-      simulationRef.current.setAntCount(antCount);
+      // simulationRef.current.setAntCount(antCount);
       // simulationRef.current.setAntsVisible(showAnts);
       // simulationRef.current.setPheromonesVisible(showPheromones);
       // simulationRef.current.setGridVisible(showGrid);
