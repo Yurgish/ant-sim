@@ -47,12 +47,25 @@ export function Canvas() {
     },
     brushSize: { value: 20, min: 5, max: 100, step: 5, label: "Brush Size" },
     isPaused: { value: false, label: "Pause Simulation" },
+
+    // Контроль швидкості симуляції
+    timeScale: { value: 1.0, min: 0.1, max: 10.0, step: 0.1, label: "Time Speed" },
+    "1x": button(() => {
+      if (simulationRef.current) simulationRef.current.setTimeScale(1.0);
+    }),
+    "2x": button(() => {
+      if (simulationRef.current) simulationRef.current.setTimeScale(2.0);
+    }),
+    "5x": button(() => {
+      if (simulationRef.current) simulationRef.current.setTimeScale(5.0);
+    }),
+
     restart: button(() => {
       restartSimulation();
     }),
   });
 
-  const { antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused } = controls;
+  const { antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused, timeScale } = controls;
 
   useEffect(() => {
     const initSimulation = async () => {
@@ -97,13 +110,14 @@ export function Canvas() {
       // simulationRef.current.setGridVisible(showGrid);
       simulationRef.current.setBrushType(brushType as "nest" | "food" | "obstacle" | "empty");
       simulationRef.current.setBrushSize(brushSize);
+      simulationRef.current.setTimeScale(timeScale);
       if (isPaused) {
         simulationRef.current.pause();
       } else {
         simulationRef.current.resume();
       }
     }
-  }, [isSimulationReady, antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused]);
+  }, [isSimulationReady, antCount, showAnts, showPheromones, showGrid, brushType, brushSize, isPaused, timeScale]);
 
   return <div ref={containerRef} style={{ width: "100vw", height: "100vh" }} />;
 }

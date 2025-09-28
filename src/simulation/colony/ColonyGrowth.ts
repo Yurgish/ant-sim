@@ -12,10 +12,10 @@ export class ColonyGrowth {
   private population: AntPopulation;
 
   private growthTimer: number = 0;
-  private growthInterval: number = 30;
+  private growthInterval: number = 15;
 
-  private foodRequiredPerAnt: number = 10;
-  private maxPopulation: number = 500;
+  private foodRequiredPerAnt: number = 20;
+  private maxPopulation: number = 5000;
 
   constructor(nest: Nest, population: AntPopulation) {
     this.nest = nest;

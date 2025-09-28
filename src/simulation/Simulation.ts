@@ -19,7 +19,11 @@ export class Simulation {
   gridRenderer: GridRenderer;
   pheromoneRenderer: PheromoneRenderer;
 
-  private updateFunction: (ticker: { deltaTime: number }) => void;
+  private updateFunction: (ticker: { deltaMS: number }) => void;
+
+  timeScale: number = 1;
+  private accumulator = 0;
+  private fixedDelta = 1 / 60;
 
   public currentBrushType: "nest" | "food" | "obstacle" | "empty" | "move-nest" | "add-entrance" = "food";
   public brushSize: number = 20;
@@ -109,19 +113,20 @@ export class Simulation {
     return simulation;
   }
 
-  private simulationLoop = (ticker: { deltaTime: number }): void => {
-    const deltaTime = ticker.deltaTime / 60;
+  private simulationLoop = (ticker: { deltaMS: number }): void => {
+    const realDelta = ticker.deltaMS / 1000;
+    this.accumulator += realDelta * this.timeScale;
 
-    if (!this.isPaused) {
-      this.colony.update(deltaTime, this.grid, this.pheromoneField);
+    while (this.accumulator >= this.fixedDelta) {
+      if (!this.isPaused) {
+        this.colony.update(this.fixedDelta, this.grid, this.pheromoneField);
+        this.pheromoneField.update(this.fixedDelta);
+      }
+      this.accumulator -= this.fixedDelta;
     }
 
     this.gridRenderer.update();
-
-    if (!this.isPaused) {
-      this.pheromoneField.update(deltaTime);
-      this.pheromoneRenderer.update();
-    }
+    this.pheromoneRenderer.update();
   };
 
   setupMouseEvents() {
@@ -197,6 +202,22 @@ export class Simulation {
 
   setAntCount(count: number) {
     this.colony.setAntCount(count);
+  }
+
+  /**
+   * Встановити швидкість симуляції
+   * @param scale - множник часу (1.0 = нормально, 2.0 = 2x швидше, 0.5 = 2x повільніше)
+   */
+  setTimeScale(scale: number) {
+    this.timeScale = Math.max(0.1, Math.min(scale, 10.0));
+    console.log(`⏱️ Швидкість симуляції: ${this.timeScale.toFixed(1)}x`);
+  }
+
+  /**
+   * Отримати поточну швидкість симуляції
+   */
+  getTimeScale(): number {
+    return this.timeScale;
   }
 
   /**
