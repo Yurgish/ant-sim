@@ -16,7 +16,7 @@ export class LinearAntSensors {
 
   // Sensor update optimization
   private updateTimer: number = 0;
-  private updateInterval: number = 1 / 30;
+  private updateInterval: number = 1 / 15;
 
   // Кеш точок для кожного сенсора
   private leftPoints: Vector2D[] = [];

@@ -107,7 +107,8 @@ export class Simulation {
         Їжі зібрано: ${stats.foodStored}, 
         Ефективність: ${stats.efficiency.toFixed(2)}, 
         Ріст: ${(stats.growthRate * 100).toFixed(1)}%,
-        Входів в гніздо: ${nestStats.totalEntrances}, Мурах всередині: ${nestStats.antsInside}`);
+        Входів в гніздо: ${nestStats.totalEntrances}, Мурах всередині: ${nestStats.antsInside},
+        Радіус входів: ${stats.entranceRadii.main}/${stats.entranceRadii.secondary} (+${stats.entranceRadii.bonus})`);
     }, 5000);
 
     return simulation;

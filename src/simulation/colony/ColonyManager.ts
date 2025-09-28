@@ -13,6 +13,11 @@ export interface ColonyStats {
   foodStored: number;
   growthRate: number;
   efficiency: number;
+  entranceRadii: {
+    main: number;
+    secondary: number;
+    bonus: number;
+  };
 }
 
 export class ColonyManager {
@@ -32,12 +37,19 @@ export class ColonyManager {
 
   update(deltaTime: number, grid: Grid, pheromoneField: PheromoneField): void {
     this.population.update(deltaTime, grid, pheromoneField);
-
     this.growth.update(deltaTime);
+
+    // Оновлюємо радіуси входів залежно від кількості мурах
+    const antCount = this.population.getCount();
+    this.nest.updateEntranceRadii(antCount);
+
+    // Оновлюємо сітку якщо радіуси змінились
+    this.updateGridForChangedRadii();
   }
 
   addNestEntrance(position: Vector2D, radius?: number): string {
-    const entranceId = this.nest.addEntrance(position, radius);
+    const antCount = this.population.getCount();
+    const entranceId = this.nest.addEntrance(position, radius, antCount);
 
     if (this.grid) {
       const entrance = this.nest.getAllEntrances().find((e) => e.id === entranceId);
@@ -77,6 +89,8 @@ export class ColonyManager {
     const nestStats = this.nest.getStats();
     const populationStats = this.population.getStats();
     const growthStats = this.growth.getStats();
+    const antCount = this.population.getCount();
+    const entranceRadii = this.nest.getEntranceRadiiInfo(antCount);
 
     return {
       totalAnts: populationStats.total,
@@ -84,6 +98,7 @@ export class ColonyManager {
       foodStored: nestStats.totalFoodStored,
       growthRate: growthStats.rate,
       efficiency: populationStats.efficiency,
+      entranceRadii: entranceRadii,
     };
   }
 
@@ -123,6 +138,10 @@ export class ColonyManager {
     this.grid = grid;
     this.population.initialize(cellSize, width, height, grid, pheromoneField, antTextures);
 
+    for (const entrance of this.nest.getAllEntrances()) {
+      this.lastKnownRadii.set(entrance.id, entrance.radius);
+    }
+
     this.drawNestOnGrid();
   }
 
@@ -143,6 +162,27 @@ export class ColonyManager {
       const { row, col } = this.grid.pixelsToGrid(entrance.position.x, entrance.position.y);
       const radiusCells = entrance.radius / this.grid.cellSize;
       this.grid.setCellTypeInRadius(row, col, radiusCells, "empty");
+    }
+  }
+
+  private lastKnownRadii: Map<string, number> = new Map();
+
+  private updateGridForChangedRadii(): void {
+    if (!this.grid) return;
+
+    for (const entrance of this.nest.getAllEntrances()) {
+      const lastRadius = this.lastKnownRadii.get(entrance.id);
+
+      if (lastRadius !== undefined && lastRadius !== entrance.radius) {
+        const { row, col } = this.grid.pixelsToGrid(entrance.position.x, entrance.position.y);
+        const oldRadiusCells = lastRadius / this.grid.cellSize;
+        this.grid.setCellTypeInRadius(row, col, oldRadiusCells, "empty");
+
+        const newRadiusCells = entrance.radius / this.grid.cellSize;
+        this.grid.setCellTypeInRadius(row, col, newRadiusCells, "nest");
+      }
+
+      this.lastKnownRadii.set(entrance.id, entrance.radius);
     }
   }
 }

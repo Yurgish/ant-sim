@@ -27,23 +27,32 @@ export class Nest {
 
   private foodDeliveryHistory: number[] = [];
 
+  // Базові радіуси входів
+  private baseMainRadius: number;
+  private baseSecondaryRadius: number;
+
   constructor(mainPosition: Vector2D, id?: string) {
     this.id = id || `nest_${Math.random().toString(36).substr(2, 9)}`;
+    this.baseMainRadius = MAIN_ENTRANCE_RADIUS;
+    this.baseSecondaryRadius = NEST_ENTRANCE_RADIUS;
+
     this.mainEntrance = {
       id: `${this.id}_main`,
       position: { ...mainPosition },
-      radius: MAIN_ENTRANCE_RADIUS,
+      radius: this.baseMainRadius,
       isMain: true,
       isActive: true,
     };
   }
 
-  addEntrance(position: Vector2D, radius: number = NEST_ENTRANCE_RADIUS): string {
+  addEntrance(position: Vector2D, radius?: number, antCount: number = 0): string {
     const entranceId = `${this.id}_entrance_${Date.now()}`;
+    const calculatedRadius = radius || this.calculateEntranceRadius(antCount, false);
+
     const entrance: NestEntrance = {
       id: entranceId,
       position: { ...position },
-      radius,
+      radius: calculatedRadius,
       isMain: false,
       isActive: true,
     };
@@ -173,5 +182,42 @@ export class Nest {
 
   getFoodDeliveryRate(): number {
     return this.foodDeliveryHistory.length;
+  }
+
+  private calculateEntranceRadius(antCount: number, isMain: boolean): number {
+    const baseRadius = isMain ? this.baseMainRadius : this.baseSecondaryRadius;
+
+    const radiusBonus = Math.floor(antCount / 250) * 3;
+    return baseRadius + radiusBonus;
+  }
+
+  updateEntranceRadii(antCount: number): void {
+    // Оновлюємо головний вхід
+    const newMainRadius = this.calculateEntranceRadius(antCount, true);
+    if (this.mainEntrance.radius !== newMainRadius) {
+      console.log(`🏠 Радіус головного входу: ${this.mainEntrance.radius} → ${newMainRadius} (мурах: ${antCount})`);
+      this.mainEntrance.radius = newMainRadius;
+    }
+
+    // Оновлюємо вторинні входи
+    const newSecondaryRadius = this.calculateEntranceRadius(antCount, false);
+    for (const entrance of this.secondaryEntrances.values()) {
+      if (entrance.radius !== newSecondaryRadius) {
+        console.log(`🚪 Радіус додаткового входу: ${entrance.radius} → ${newSecondaryRadius} (мурах: ${antCount})`);
+        entrance.radius = newSecondaryRadius;
+      }
+    }
+  }
+
+  getEntranceRadiiInfo(antCount: number): { main: number; secondary: number; bonus: number } {
+    const mainRadius = this.calculateEntranceRadius(antCount, true);
+    const secondaryRadius = this.calculateEntranceRadius(antCount, false);
+    const bonus = mainRadius - this.baseMainRadius;
+
+    return {
+      main: mainRadius,
+      secondary: secondaryRadius,
+      bonus: bonus,
+    };
   }
 }
