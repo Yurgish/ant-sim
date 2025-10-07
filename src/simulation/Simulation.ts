@@ -2,6 +2,7 @@ import { Application, Assets, Texture } from "pixi.js";
 
 import antSprite from "/ant.png";
 import antCarryingFood from "/carrying-food-ant.png";
+import backgroundTile from "/tile.png";
 
 import { Grid } from "./chunk/Grid";
 import { PheromoneField } from "./chunk/PheromoneField";
@@ -67,8 +68,12 @@ export class Simulation {
     const pheromoneField = new PheromoneField(width, height, cellSize * 1.25, CHUNK_SIZE / 2);
 
     const pheromoneRenderer = new PheromoneRenderer(pheromoneField);
-    const gridRenderer = new GridRenderer(grid);
 
+    const tile: Texture = await Assets.load(backgroundTile);
+
+    const gridRenderer = new GridRenderer(grid, tile);
+
+    app.stage.addChild(gridRenderer.getBackgroundContainer());
     app.stage.addChild(gridRenderer.getContainer());
     app.stage.addChild(pheromoneRenderer.getContainer());
 
@@ -103,12 +108,12 @@ export class Simulation {
     setInterval(() => {
       const stats = colony.getStats();
       const nestStats = colony.getNest().getStats();
-      console.log(`📊 Статистика: Мурах: ${stats.totalAnts} (активні: ${stats.activeAnts}), 
-        Їжі зібрано: ${stats.foodStored}, 
-        Ефективність: ${stats.efficiency.toFixed(2)}, 
-        Ріст: ${(stats.growthRate * 100).toFixed(1)}%,
-        Входів в гніздо: ${nestStats.totalEntrances}, Мурах всередині: ${nestStats.antsInside},
-        Радіус входів: ${stats.entranceRadii.main}/${stats.entranceRadii.secondary} (+${stats.entranceRadii.bonus})`);
+      console.log(`📊 Stats: Ants: ${stats.totalAnts} (active: ${stats.activeAnts}), 
+      Food collected: ${stats.foodStored}, 
+      Efficiency: ${stats.efficiency.toFixed(2)}, 
+      Growth: ${(stats.growthRate * 100).toFixed(1)}%,
+      Nest entrances: ${nestStats.totalEntrances}, Ants inside: ${nestStats.antsInside},
+      Entrance radius: ${stats.entranceRadii.main}/${stats.entranceRadii.secondary} (+${stats.entranceRadii.bonus})`);
     }, 5000);
 
     return simulation;
@@ -137,7 +142,6 @@ export class Simulation {
     this.app.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.app.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
     this.app.canvas.addEventListener("mouseleave", this.onMouseUp.bind(this));
-    this.app.canvas.addEventListener("contextmenu", this.onRightClick.bind(this));
 
     document.addEventListener("mouseup", this.onMouseUp.bind(this));
     document.addEventListener("mouseleave", this.onMouseUp.bind(this));
@@ -167,56 +171,14 @@ export class Simulation {
     this.updatePauseState();
   }
 
-  //remake
-  private onRightClick(event: MouseEvent) {
-    event.preventDefault();
-
-    if (this.currentBrushType === "add-entrance") {
-      const entrances = this.colony.getNest().getAllEntrances();
-      if (entrances.length > 1) {
-        const clickPos = { x: event.offsetX, y: event.offsetY };
-        let closestEntrance = null;
-        let minDistance = Infinity;
-
-        for (const entrance of entrances) {
-          if (entrance.isMain && entrances.length === 1) continue;
-
-          const distance = Math.sqrt(
-            Math.pow(clickPos.x - entrance.position.x, 2) + Math.pow(clickPos.y - entrance.position.y, 2)
-          );
-
-          if (distance < minDistance && distance < entrance.radius) {
-            minDistance = distance;
-            closestEntrance = entrance;
-          }
-        }
-
-        if (closestEntrance) {
-          const success = this.colony.removeNestEntrance(closestEntrance.id);
-          if (success) {
-            console.log(`🗑️ Видалено вхід: ${closestEntrance.id}`);
-          }
-        }
-      }
-    }
-  }
-
   setAntCount(count: number) {
     this.colony.setAntCount(count);
   }
 
-  /**
-   * Встановити швидкість симуляції
-   * @param scale - множник часу (1.0 = нормально, 2.0 = 2x швидше, 0.5 = 2x повільніше)
-   */
   setTimeScale(scale: number) {
     this.timeScale = Math.max(0.1, Math.min(scale, 10.0));
-    console.log(`⏱️ Швидкість симуляції: ${this.timeScale.toFixed(1)}x`);
   }
 
-  /**
-   * Отримати поточну швидкість симуляції
-   */
   getTimeScale(): number {
     return this.timeScale;
   }
@@ -300,12 +262,10 @@ export class Simulation {
 
   moveNest(x: number, y: number) {
     this.colony.setNestPosition(x, y);
-    console.log(`🏠 Переміщено головний вхід в (${x.toFixed(0)}, ${y.toFixed(0)})`);
   }
 
   addNestEntrance(x: number, y: number) {
-    const entranceId = this.colony.addNestEntrance({ x, y });
-    console.log(`➕ Додано новий вхід в (${x.toFixed(0)}, ${y.toFixed(0)}): ${entranceId}`);
+    this.colony.addNestEntrance({ x, y });
   }
 
   private updatePauseState() {

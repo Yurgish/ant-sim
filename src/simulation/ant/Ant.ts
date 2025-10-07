@@ -152,15 +152,10 @@ export class Ant {
     this.restDuration = 0;
 
     this.sprite.visible = true;
-
-    // Отримуємо правильну позицію виходу через колбек onExitNest
-    // який повертає позицію з урахуванням вибраного входу
     if (this.onExitNest) {
       this.onExitNest(this.id);
     }
 
-    // Після виклику onExitNest, позиція мурахи вже встановлена правильно
-    // Тепер просто задаємо напрямок руху
     const exitAngle = Math.random() * Math.PI * 2;
     const exitDirection = VectorUtils.fromAngle(exitAngle);
 
@@ -203,13 +198,11 @@ export class Ant {
       this.pheromones.resetWanderingTimer();
     }
 
-    // Перевірка гнізда (використовуємо поточну позицію)
     if (cell.isNest && this.state === "searching") {
       this.pheromones.resetWanderingTimer();
     }
 
     if (cell.isNest && this.state === "returning" && this.carryingFood) {
-      // Мурахи входять в гніздо, коли поточна позиція на nest клітинці
       this.enterNest();
       stateChanged = true;
     }

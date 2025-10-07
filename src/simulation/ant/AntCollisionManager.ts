@@ -41,14 +41,10 @@ export class AntCollisionManager {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  removeAnt(_ant: Ant): void {
-    // Нічого не робимо - сітка очищається кожен кадр
-  }
+  removeAnt(_ant: Ant): void {}
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  updateAntPosition(_ant: Ant, _oldX: number, _oldY: number): void {
-    // Нічого не робимо - позиції оновлюються при handleCollisions
-  }
+  updateAntPosition(_ant: Ant, _oldX: number, _oldY: number): void {}
 
   handleCollisions(ants: Ant[], deltaTime: number): void {
     this.clearGrid();
@@ -86,7 +82,6 @@ export class AntCollisionManager {
         const cell = this.collisionGrid[y][x];
         if (cell.ants.length <= 1) continue;
 
-        // Перевіряємо колізії всередині клітинки
         this.checkCellCollisions(cell.ants, deltaTime);
 
         if (x < this.gridWidth - 1) {

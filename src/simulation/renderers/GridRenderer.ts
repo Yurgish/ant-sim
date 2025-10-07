@@ -4,11 +4,15 @@ import { DEBUG_ENABLED, GRID_UPDATE_INTERVAL_FRAMES } from "@simulation/constant
 import { GRID_ALPHA, GRID_COLORS, MAX_FOOD_PER_CELL } from "@simulation/constants/grid";
 import { Container, Particle, ParticleContainer, Sprite, Texture } from "pixi.js";
 
+import { GridBackgroundRenderer } from "./GridBackgroundRenderer";
+
 type CellParticleMap = Map<GridChunk, (Particle | null)[]>;
 
 export class GridRenderer {
   private container: ParticleContainer;
   private debugContainer: Container;
+
+  private backgroundRenderer: GridBackgroundRenderer;
 
   private grid: Grid;
   private cellParticles: CellParticleMap = new Map();
@@ -18,8 +22,15 @@ export class GridRenderer {
   private frameCounter: number = 0;
   private updateInterval: number = GRID_UPDATE_INTERVAL_FRAMES;
 
-  constructor(grid: Grid) {
+  constructor(grid: Grid, tileTexture: Texture) {
     this.grid = grid;
+
+    this.backgroundRenderer = new GridBackgroundRenderer(
+      tileTexture,
+      grid.cellSize,
+      grid.cols * grid.cellSize,
+      grid.rows * grid.cellSize
+    );
 
     this.container = new ParticleContainer({
       dynamicProperties: {
@@ -193,9 +204,14 @@ export class GridRenderer {
     return this.debugContainer;
   }
 
+  getBackgroundContainer(): Container {
+    return this.backgroundRenderer.getContainer();
+  }
+
   destroy(): void {
     this.cellParticles.clear();
     this.debugParticles.clear();
+    this.backgroundRenderer.destroy();
     this.debugContainer.destroy({ children: true });
     this.container.destroy({ children: true });
   }

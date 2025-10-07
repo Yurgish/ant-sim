@@ -3,8 +3,8 @@
 export const SENSOR_ANGLE = Math.PI / 4;
 export const SENSOR_RADIUS_CELLS = 6; // Sensor radius for pheromone detection in cells (smaller radius)
 
-export const LINEAR_SENSOR_POINTS = 8; // Кількість точок на лінії (менше = швидше)
-export const LINEAR_SENSOR_STEP = 2; // Крок між точками в клітинках
+export const LINEAR_SENSOR_POINTS = 8; // Number of points per sensor
+export const LINEAR_SENSOR_STEP = 2; // Step between points in cells
 
 // MOVEMENT
 export const ANT_MASS_BASE = 1.0; // Base mass for collision calculations

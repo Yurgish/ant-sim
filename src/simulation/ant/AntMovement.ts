@@ -7,7 +7,6 @@ import {
 import type { Vector2D } from "@simulation/types";
 import { VectorUtils } from "@simulation/utils";
 
-//import type { AntSensors } from "./AntSensors";
 import type { LinearAntSensors } from "./LinearAntSensors";
 
 export class AntMovement {

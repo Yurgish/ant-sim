@@ -50,7 +50,6 @@ export class ColonyGrowth {
 
     if (this.nest.consumeFood(growthAmount * this.foodRequiredPerAnt)) {
       this.population.setTargetCount(currentCount + growthAmount);
-      console.log(`🐜 Колонія виросла на ${growthAmount} мурах! Тепер: ${currentCount + growthAmount}`);
     }
   }
 

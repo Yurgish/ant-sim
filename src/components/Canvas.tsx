@@ -47,8 +47,6 @@ export function Canvas() {
     },
     brushSize: { value: 20, min: 5, max: 100, step: 5, label: "Brush Size" },
     isPaused: { value: false, label: "Pause Simulation" },
-
-    // Контроль швидкості симуляції
     timeScale: { value: 1.0, min: 0.1, max: 10.0, step: 0.1, label: "Time Speed" },
     "1x": button(() => {
       if (simulationRef.current) simulationRef.current.setTimeScale(1.0);

@@ -1,7 +1,7 @@
 import { MIN_PHEROMONE_THRESHOLD, PHEROMONE_EVAPORATION_RATE } from "@simulation/constants/pheromones";
 import { PHEROMONE_TYPES, type PheromoneTypeId } from "@simulation/types/PheromoneTypes";
 
-import { BaseChunk } from "./BaseChunk"; // Припустимо, BaseChunk.getIndex тепер public
+import { BaseChunk } from "./BaseChunk";
 
 export class PheromoneChunk extends BaseChunk {
   pheromoneData: Map<PheromoneTypeId, Float32Array> = new Map();

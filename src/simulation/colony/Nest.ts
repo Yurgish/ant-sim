@@ -192,18 +192,14 @@ export class Nest {
   }
 
   updateEntranceRadii(antCount: number): void {
-    // Оновлюємо головний вхід
     const newMainRadius = this.calculateEntranceRadius(antCount, true);
     if (this.mainEntrance.radius !== newMainRadius) {
-      console.log(`🏠 Радіус головного входу: ${this.mainEntrance.radius} → ${newMainRadius} (мурах: ${antCount})`);
       this.mainEntrance.radius = newMainRadius;
     }
 
-    // Оновлюємо вторинні входи
     const newSecondaryRadius = this.calculateEntranceRadius(antCount, false);
     for (const entrance of this.secondaryEntrances.values()) {
       if (entrance.radius !== newSecondaryRadius) {
-        console.log(`🚪 Радіус додаткового входу: ${entrance.radius} → ${newSecondaryRadius} (мурах: ${antCount})`);
         entrance.radius = newSecondaryRadius;
       }
     }

@@ -39,11 +39,9 @@ export class ColonyManager {
     this.population.update(deltaTime, grid, pheromoneField);
     this.growth.update(deltaTime);
 
-    // Оновлюємо радіуси входів залежно від кількості мурах
     const antCount = this.population.getCount();
     this.nest.updateEntranceRadii(antCount);
 
-    // Оновлюємо сітку якщо радіуси змінились
     this.updateGridForChangedRadii();
   }
 

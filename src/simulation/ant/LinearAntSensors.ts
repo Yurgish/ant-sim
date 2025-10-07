@@ -14,16 +14,13 @@ export class LinearAntSensors {
   private cellSize: number;
   sensorAngle: number = SENSOR_ANGLE;
 
-  // Sensor update optimization
   private updateTimer: number = 0;
   private updateInterval: number = 1 / 15;
 
-  // Кеш точок для кожного сенсора
   private leftPoints: Vector2D[] = [];
   private centerPoints: Vector2D[] = [];
   private rightPoints: Vector2D[] = [];
 
-  // Debug visuals
   private debugGraphics?: Graphics;
   debugEnabled: boolean = false;
 
@@ -34,7 +31,6 @@ export class LinearAntSensors {
     this.centreSensor = { position: { x: 0, y: 0 }, value: 0, radius: 0 };
     this.rightSensor = { position: { x: 0, y: 0 }, value: 0, radius: 0 };
 
-    // Ініціалізація точок
     this.initializeSensorPoints();
 
     this.updateTimer = Math.random() * this.updateInterval;
@@ -181,7 +177,6 @@ export class LinearAntSensors {
         maxTargetStrength = Math.max(maxTargetStrength, nestStrength);
       }
 
-      // Перевірка феромонів
       const { row: pheromoneRow, col: pheromoneCol } = pheromoneField.pixelsToGrid(point.x, point.y);
       const pheromoneStrength = pheromoneField.getStrength(pheromoneRow, pheromoneCol, pheromoneType);
       if (pheromoneStrength > 0) {
